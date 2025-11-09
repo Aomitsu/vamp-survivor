@@ -1,48 +1,55 @@
+pub mod abilities;
+
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
 use crate::physic::Physics;
 
 pub struct Player {
+    // Macroquad
     texture: Texture2D,
     position: Vec2,
     rotation: f32,
+    // Physic
     speed: f32,
     rigid_body_handle: RigidBodyHandle,
-    _collider_handle: ColliderHandle,
+    collider_handle: ColliderHandle,
 }
 
 impl Player {
     pub async fn new(phys: &mut Physics) -> Self {
         let texture = load_texture("assets/player.png").await.unwrap();
         texture.set_filter(FilterMode::Nearest);
+        let texture_data = texture.get_texture_data();
         let position = vec2(200.0, 200.0);
-        let centred = position + vec2(texture.width() / 2.0, texture.height() / 2.0);
+        
         let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(vector![200.0, 200.0])
+            .translation(vector![position.x, position.y])
             .linear_damping(5.0)
             .build();
         let collider = ColliderBuilder::cuboid(16., 16.)
-            .translation(vector![16.0, 16.0])
+            .translation(vector![texture_data.width as f32 / 2., texture_data.height as f32 / 2.])
             .build();
 
         let phys_handle = phys.register_with_parent(rigid_body, collider);
         
         Player {
             texture: texture,
-            position: vec2(200.0, 200.0),
+            position,
             rotation: 0.,
             speed: 5.0 * 5000.0,
             rigid_body_handle: phys_handle.0,
-            _collider_handle: phys_handle.1
+            collider_handle: phys_handle.1
         }
     }
 
     pub fn update(&mut self, phys: &mut Physics) {
         // Get physics info
-        if let Some(rigid_body) = phys.get_rigid_body_set().get(self.rigid_body_handle) {
-            let pos = rigid_body.position();
-            self.position = vec2(pos.translation.x, pos.translation.y);
+        if let Some(collider) = phys.get_collider_set().get(self.collider_handle) {
+            let pos = collider.position();
+            let position = vec2(pos.translation.x, pos.translation.y);
+            let centred = position + vec2(self.texture.width() / -2.0, self.texture.height() / -2.0);
+            self.position = centred;
         }
 
         let mut move_vec = Vec2::ZERO;

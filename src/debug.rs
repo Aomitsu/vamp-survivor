@@ -76,6 +76,8 @@ pub fn basic_infos(infos: &Debug) {
     draw_text_ex(format!("AVG FPS : {}", infos.avg_fps).as_str(), 1.0, 50.0, TextParams::default());
     draw_text_ex(format!("Frame Time : {:.2}ms", get_frame_time() * 1000.0).as_str(), 1.0, 65.0, TextParams::default());
     draw_text_ex(format!("AVG Frame Time : {:.2}ms", infos.avg_frame_time * 1000.0).as_str(), 1.0, 80.0, TextParams::default());
+    draw_text_ex(format!("Time : {:.2}s", get_time()).as_str(), 1.0, 95.0, TextParams::default());
+
 }
 pub fn telemetry_infos(_infos: &Debug) {
     draw_text_ex(format!("Textures count : {:?}", telemetry::textures_count()).as_str(), 1.0, 35.0, TextParams::default());
