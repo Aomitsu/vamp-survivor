@@ -9,7 +9,7 @@ pub struct Player {
     rotation: f32,
     speed: f32,
     rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
+    _collider_handle: ColliderHandle,
 }
 
 impl Player {
@@ -18,20 +18,20 @@ impl Player {
         texture.set_filter(FilterMode::Nearest);
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![200.0, 200.0])
-            .linear_damping(2.0)
+            .linear_damping(5.0)
             .build();
         let collider = ColliderBuilder::cuboid(32., 32.)
             .build();
 
-        let phys_handle = phys.register(rigid_body, collider);
+        let phys_handle = phys.register_with_parent(rigid_body, collider);
 
         Player {
             texture: texture,
             position: vec2(200.0, 200.0),
             rotation: 0.,
-            speed: 500.0,
+            speed: 5.0 * 10000.0,
             rigid_body_handle: phys_handle.0,
-            collider_handle: phys_handle.1
+            _collider_handle: phys_handle.1
         }
     }
 
@@ -58,7 +58,7 @@ impl Player {
             // Movement
             // TODO: MOVE WITH FORCES
             move_vec = move_vec.normalize_or_zero();
-            rigid_body.set_linvel(vector![move_vec.x * self.speed, move_vec.y * self.speed], true);
+            rigid_body.apply_impulse(vector![move_vec.x * self.speed, move_vec.y * self.speed], true);
         }
         // Rotate character depending on mouse location, don't move collider box (useless)
         let mouse_pos = mouse_position_local();

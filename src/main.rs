@@ -1,4 +1,4 @@
-use macroquad::{experimental, prelude::*};
+use macroquad::prelude::*;
 
 use crate::{debug::Debug, map::Map, physic::Physics, player::Player};
 
@@ -41,11 +41,11 @@ async fn main() {
         clear_background(DARKGRAY);
         map.draw(&player.position_centred());
         player.draw();
+        physic.draw();
  
         // Drawing on screen
         set_default_camera();
         debug.draw();
-        physic.draw();
 
         // Send frame
         next_frame().await

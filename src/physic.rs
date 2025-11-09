@@ -55,13 +55,30 @@ impl Physics {
     }
 
     pub fn draw(&self) {
-        // Render physics bodies
+        // Parcourt tous les colliders pour les dessiner
+        for (_handle, collider) in self.collider_set.iter() {
+            let position = collider.position();
+            let shape = collider.shape();
 
+            // Dessine une forme en fonction du type de collider
+            if let Some(cuboid) = shape.as_cuboid() {
+                let extents = cuboid.half_extents;
+                let width = extents.x * 2.0;
+                let height = extents.y * 2.0;
+
+                // La position du collider est son centre, on ajuste pour dessiner depuis le coin supérieur gauche
+                let top_left_x = position.translation.x - extents.x;
+                let top_left_y = position.translation.y - extents.y;
+
+                // Dessine le contour du rectangle
+                draw_rectangle_lines(top_left_x, top_left_y, width, height, 2.0, LIME);
+            }
+        }
     }
 
-    pub fn register(&mut self, rigid_body: RigidBody, collider: Collider) -> (RigidBodyHandle, ColliderHandle) {
+    pub fn register_with_parent(&mut self, rigid_body: RigidBody, collider: Collider) -> (RigidBodyHandle, ColliderHandle) {
         let handle_rigid_body: RigidBodyHandle = self.rigid_body_set.insert(rigid_body);
-        let handle_collider: ColliderHandle = self.collider_set.insert(collider);
+        let handle_collider: ColliderHandle = self.collider_set.insert_with_parent(collider, handle_rigid_body, &mut self.rigid_body_set);
         (handle_rigid_body, handle_collider)
     
     }
@@ -70,7 +87,7 @@ impl Physics {
         &self.rigid_body_set
     }
 
-    pub fn get_collider_set(&self) -> &ColliderSet {
+    pub fn _get_collider_set(&self) -> &ColliderSet {
         &self.collider_set
     }
 
