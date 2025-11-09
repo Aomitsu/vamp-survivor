@@ -54,7 +54,8 @@ impl Physics {
         );
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, debug: bool) {
+        if !debug {return;}
         // Parcourt tous les colliders pour les dessiner
         for (_handle, collider) in self.collider_set.iter() {
             let position = collider.position();

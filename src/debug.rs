@@ -65,6 +65,10 @@ impl Debug {
             0 | _ => {basic_infos(self)} // Basic infos
         }
     }
+
+    pub fn is_in_debug(&self) -> bool {
+        self.display
+    }
 }
 
 pub fn basic_infos(infos: &Debug) {

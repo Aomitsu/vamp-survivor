@@ -41,7 +41,7 @@ async fn main() {
         clear_background(DARKGRAY);
         map.draw(&player.position_centred());
         player.draw();
-        physic.draw();
+        physic.draw(debug.is_in_debug());
  
         // Drawing on screen
         set_default_camera();

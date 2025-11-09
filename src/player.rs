@@ -16,20 +16,23 @@ impl Player {
     pub async fn new(phys: &mut Physics) -> Self {
         let texture = load_texture("assets/player.png").await.unwrap();
         texture.set_filter(FilterMode::Nearest);
+        let position = vec2(200.0, 200.0);
+        let centred = position + vec2(texture.width() / 2.0, texture.height() / 2.0);
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![200.0, 200.0])
             .linear_damping(5.0)
             .build();
-        let collider = ColliderBuilder::cuboid(32., 32.)
+        let collider = ColliderBuilder::cuboid(16., 16.)
+            .translation(vector![16.0, 16.0])
             .build();
 
         let phys_handle = phys.register_with_parent(rigid_body, collider);
-
+        
         Player {
             texture: texture,
             position: vec2(200.0, 200.0),
             rotation: 0.,
-            speed: 5.0 * 10000.0,
+            speed: 5.0 * 5000.0,
             rigid_body_handle: phys_handle.0,
             _collider_handle: phys_handle.1
         }
