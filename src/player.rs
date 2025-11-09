@@ -17,7 +17,8 @@ impl Player {
         let texture = load_texture("assets/player.png").await.unwrap();
         texture.set_filter(FilterMode::Nearest);
         let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(vector![100.0, 100.0])
+            .translation(vector![200.0, 200.0])
+            .linear_damping(2.0)
             .build();
         let collider = ColliderBuilder::cuboid(32., 32.)
             .build();
@@ -26,7 +27,7 @@ impl Player {
 
         Player {
             texture: texture,
-            position: vec2(100.0, 100.0),
+            position: vec2(200.0, 200.0),
             rotation: 0.,
             speed: 500.0,
             rigid_body_handle: phys_handle.0,
@@ -39,7 +40,6 @@ impl Player {
         if let Some(rigid_body) = phys.get_rigid_body_set().get(self.rigid_body_handle) {
             let pos = rigid_body.position();
             self.position = vec2(pos.translation.x, pos.translation.y);
-            //self.rotation = pos.rotation.angle();
         }
 
         let mut move_vec = Vec2::ZERO;
@@ -56,6 +56,7 @@ impl Player {
 
         if let Some(rigid_body) = phys.get_rigid_body_set_mut().get_mut(self.rigid_body_handle) {
             // Movement
+            // TODO: MOVE WITH FORCES
             move_vec = move_vec.normalize_or_zero();
             rigid_body.set_linvel(vector![move_vec.x * self.speed, move_vec.y * self.speed], true);
         }
