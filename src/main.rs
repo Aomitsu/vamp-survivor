@@ -45,7 +45,7 @@ async fn main() {
  
         // Drawing on screen
         set_default_camera();
-        debug.draw();
+        debug.draw(physic.debug_info());
 
         // Send frame
         next_frame().await

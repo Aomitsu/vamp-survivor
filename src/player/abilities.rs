@@ -84,7 +84,7 @@ impl PAFireball {
 
         PAFireball {
             texture,
-            speed: 100,
+            speed: 100 * 1000,
             fireball_database: Vec::new(),
             texture_index: 0,
             tile_size: 16,
@@ -94,10 +94,21 @@ impl PAFireball {
     }
 
     pub fn cast(&mut self, phys: &mut Physics, position: Vec2) {
-        let collider = ColliderBuilder::cuboid(0.5, 0.2).build();
-        let rigid_body = RigidBodyBuilder::dynamic()
+        let collider = ColliderBuilder::cuboid(5., 5.)
+            .translation(vector![10., 10.])
+            .sensor(true)
+            .build();
+        let mut rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![position.x, position.y])
             .build();
+
+        // Create a static force going in the mouse location direction
+        let mouse_pos = mouse_position_local();
+        let y = mouse_pos.y.atan2(mouse_pos.x);
+        let x = mouse_pos.x.atan2(mouse_pos.y);
+
+        rigid_body.add_force(vector![x * self.speed as f32, y * self.speed as f32], true);
+
 
         let phys_handle = phys.register_with_parent(rigid_body, collider);
         
@@ -116,8 +127,8 @@ impl PAFireball {
         let mut i = 0;
         while i < self.fireball_database.len() {
             let fireball = &mut self.fireball_database[i];
-            if let Some(rigid_body) = phys.get_rigid_body_set_mut().get_mut(fireball.rigid_body_handle) {
-                fireball.position = vec2(rigid_body.position().translation.x, rigid_body.position().translation.y)
+            if let Some(collider) = phys.get_collider_set().get(fireball.collider_handle) {
+                fireball.position = vec2(collider.position().translation.x - 7., collider.position().translation.y - 7.)
             } else {
                 // Remove if no physic body related
                 self.fireball_database.remove(i);

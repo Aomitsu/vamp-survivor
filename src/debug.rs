@@ -1,6 +1,8 @@
 use macroquad::{prelude::*, telemetry};
 use std::collections::VecDeque;
 
+use crate::physic::{self, PhysicsDebugInfo};
+
 pub struct Debug {
     display: bool,
     page: i8,
@@ -44,6 +46,8 @@ impl Debug {
                 self.page = 0;
             } else if is_key_down(KeyCode::Kp1) {
                 self.page = 1;
+            } else if is_key_down(KeyCode::Kp2) {
+                self.page = 2;
             }
             self.display = !self.display;
 
@@ -57,11 +61,12 @@ impl Debug {
         }
     }
 
-    pub fn draw(&self){
+    pub fn draw(&self, physic_info: PhysicsDebugInfo){
         if !self.display {return;}
         draw_text_ex("Debug menu - Press F3 + Numpad to choose a page", 1.0, 20.0, TextParams::default());
         match self.page {
             1 => {telemetry_infos(self)} // Telemetry
+            2 => {physics_info(physic_info)} // Physics
             0 | _ => {basic_infos(self)} // Basic infos
         }
     }
@@ -81,4 +86,9 @@ pub fn basic_infos(infos: &Debug) {
 }
 pub fn telemetry_infos(_infos: &Debug) {
     draw_text_ex(format!("Textures count : {:?}", telemetry::textures_count()).as_str(), 1.0, 35.0, TextParams::default());
+}
+
+pub fn physics_info(infos: PhysicsDebugInfo) {
+    draw_text_ex(format!("RigidBody Count : {:?}", infos.rbody_set_size).as_str(), 1.0, 35.0, TextParams::default());
+    draw_text_ex(format!("Colliders Count : {:?}", infos.collider_set_size).as_str(), 1.0, 50.0, TextParams::default());
 }

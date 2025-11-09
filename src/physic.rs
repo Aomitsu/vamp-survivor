@@ -20,6 +20,11 @@ pub struct Physics{
     event_handler: ()
 }
 
+pub struct PhysicsDebugInfo {
+    pub rbody_set_size: usize,
+    pub collider_set_size: usize,
+}
+
 
 impl Physics {
     /// Create new physic universe
@@ -50,6 +55,7 @@ impl Physics {
         let gravity = vector![0.0, 0.0];
         // Using frametime
         self.integration_parameters.dt = get_frame_time();
+
         // Update physics
         self.physics_pipeline.step(
             &gravity,
@@ -89,6 +95,11 @@ impl Physics {
                 draw_rectangle_lines(top_left_x, top_left_y, width, height, 2.0, LIME);
             }
         }
+    }
+
+    pub fn debug_info(&self) -> PhysicsDebugInfo {
+        // return some debug infos
+        PhysicsDebugInfo { rbody_set_size: self.rigid_body_set.len(), collider_set_size: self.collider_set.len() }
     }
 
     /// Register rigibody with collider, and set parental relation.
