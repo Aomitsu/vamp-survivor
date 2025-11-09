@@ -5,6 +5,11 @@ edition = "2024"
 
 [dependencies]
 macroquad = "0.4"
+rapier2d = { version = "*", features = [ "simd-stable" ] }
+
+[profile.dev.package.rapier3d]
+opt-level = 3
+codegen-units = 1
 
 [profile.release]
 opt-level = 3 
