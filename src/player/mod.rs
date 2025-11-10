@@ -1,23 +1,25 @@
 pub mod abilities;
 
+use std::ops::{Deref, DerefMut};
+
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
-use crate::{physic::Physics, player::abilities::PlayerAbilities};
+use crate::{entity::Entity, physic::Physics, player::abilities::{Ability, FireballAbility}};
+
 
 pub struct Player {
-    // Macroquad
-    texture: Texture2D,
-    position: Vec2,
-    rotation: f32,
-    // Physic
-    speed: f32,
-    rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
-    // Abilities
-    player_abilities: PlayerAbilities
+    base: Entity,
+    abilities: Vec<Box<dyn Ability>>
 }
 
+impl Deref for Player {
+    type Target = Entity;
+    fn deref(&self) -> &Self::Target { &self.base }
+}
+impl DerefMut for Player {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.base }
+}
 impl Player {
     pub async fn new(phys: &mut Physics) -> Self {
         let texture = load_texture("assets/player.png").await.unwrap();
@@ -34,21 +36,25 @@ impl Player {
             .build();
 
         let phys_handle = phys.register_with_parent(rigid_body, collider);
-        
-        Player {
-            texture: texture,
-            position,
-            rotation: 0.,
-            speed: 5.0 * 5000.0,
-            rigid_body_handle: phys_handle.0,
-            collider_handle: phys_handle.1,
-            player_abilities: PlayerAbilities::new().await
-        }
+
+        let mut base = Entity::new_with_phys(texture, position, phys_handle.0, phys_handle.1);
+        base.speed = 10 * 1000;
+        let mut abilities: Vec<Box<dyn Ability>> = Vec::new();
+
+
+        // Create
+        let mut player = Player {
+            base,
+            abilities
+        };
+
+        // player.give_ability(Box::new(FireballAbility::default()));
+
+        player
     }
 
     pub fn update(&mut self, phys: &mut Physics) {
-        // Get physics info
-        if let Some(collider) = phys.get_collider_set().get(self.collider_handle) {
+        if let Some(collider) = phys.get_collider_set().get(self.collider_handle.unwrap()) {
             let pos = collider.position();
             let position = vec2(pos.translation.x, pos.translation.y);
             let centred = position + vec2(self.texture.width() / -2.0, self.texture.height() / -2.0);
@@ -67,18 +73,18 @@ impl Player {
             }
         }
 
-        if let Some(rigid_body) = phys.get_rigid_body_set_mut().get_mut(self.rigid_body_handle) {
+        if let Some(rigid_body) = phys.get_rigid_body_set_mut().get_mut(self.rigid_body_handle.unwrap()) {
             // Movement
             move_vec = move_vec.normalize_or_zero();
-            rigid_body.apply_impulse(vector![move_vec.x * self.speed, move_vec.y * self.speed], true);
+            rigid_body.apply_impulse(vector![move_vec.x * self.speed as f32, move_vec.y * self.speed as f32], true);
         }
         // Rotate character depending on mouse location, don't move collider box (useless)
         let mouse_pos = mouse_position_local();
         self.rotation = mouse_pos.y.atan2(mouse_pos.x);
 
-        // Abilities
-
-        self.player_abilities.update(phys, self.position_centred());
+        self.abilities.iter().for_each(|boxxed_ability| {
+            boxxed_ability.update(phys, &self.base);
+        });
 
     }
 
@@ -88,10 +94,35 @@ impl Player {
             ..Default::default()
         };
         draw_texture_ex(&self.texture, self.position.x, self.position.y, WHITE, params);
-        self.player_abilities.draw();
+
+        self.abilities.iter().for_each(|boxxed_ability| {
+            boxxed_ability.draw();
+        });
     }
 
+    // TODO: Move to entity
     pub fn position_centred(&self) -> Vec2 {
         self.position + vec2(self.texture.width() / 2.0, self.texture.height() / 2.0)
     }
+
+    pub fn give_ability(&mut self, ability: Box<dyn Ability>) {
+        // Get the TypeId of the ability we're trying to give.
+        let new_ability_type_id = ability.as_any().type_id();
+
+        // Find if an ability of the same type already exists.
+        if let Some(existing_ability) = self.abilities.iter_mut().find(|a| a.as_any().type_id() == new_ability_type_id) {
+            // If it exists, level it up.
+            let data = existing_ability.get_data().clone();
+
+            // TODO: Upgrade it
+
+            existing_ability.set_data(&data);
+        } else {
+            // If it doesn't exist, add it to the list.
+            self.abilities.push(ability);
+        }
+    }
+
+
+
 }

@@ -6,6 +6,7 @@ mod map;
 mod debug;
 mod player;
 mod physic;
+mod entity;
 
 fn window_conf() -> Conf {
     Conf {
