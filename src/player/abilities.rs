@@ -7,8 +7,9 @@ use crate::{entity::Entity, physic::Physics, player::Player};
 
 #[derive(Clone, Default)]
 pub struct AbilityData {
-    level: i32,
-    damage: i32,
+    level: i64,
+    damage: i64,
+    cooldown: f64,
 }
 
 pub trait Ability: Any {
@@ -21,9 +22,11 @@ pub trait Ability: Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Default)]
 pub struct FireballAbility{
     data: AbilityData,
+    tileset_index: i64,
+    base_texture: Texture2D,
+    entities: Vec<Entity>
 }
 
 impl Ability for FireballAbility {
@@ -50,12 +53,18 @@ impl Ability for FireballAbility {
 }
 
 impl FireballAbility {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let base_texture = load_texture("assets/projectiles/fireball.png").await.unwrap();
+        base_texture.set_filter(FilterMode::Nearest);
         Self {
             data: AbilityData {
                 level: 1,
                 damage: 10,
-            }
+                cooldown: 300.,
+            },
+            base_texture, 
+            tileset_index: 0,
+            entities: Vec::new()
         }
     }
 }

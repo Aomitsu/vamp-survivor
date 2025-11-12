@@ -11,14 +11,17 @@ pub struct Entity {
     pub speed: i32,
     pub rigid_body_handle: Option<RigidBodyHandle>,
     pub collider_handle: Option<ColliderHandle>,
+    // Data
+    health: f64,
+    max_health: f64,
 }
 
 impl Entity {
     pub fn new(texture: Texture2D, position: Vec2) -> Self {
-        Entity { texture, position, rotation: 0., speed: 0, rigid_body_handle: None, collider_handle: None }
+        Entity { texture, position, rotation: 0., speed: 0, rigid_body_handle: None, collider_handle: None, health: 100., max_health: 100. }
     }
     pub fn new_with_phys(texture: Texture2D, position: Vec2, rb_handle: RigidBodyHandle, coll_handle: ColliderHandle) -> Self {
-        Entity { texture, position, rotation: 0., speed: 0, rigid_body_handle: Some(rb_handle), collider_handle: Some(coll_handle) }
+        Entity { texture, position, rotation: 0., speed: 0, rigid_body_handle: Some(rb_handle), collider_handle: Some(coll_handle), health: 100., max_health: 100. }
     }
 
 }

@@ -39,7 +39,7 @@ impl Player {
 
         let mut base = Entity::new_with_phys(texture, position, phys_handle.0, phys_handle.1);
         base.speed = 10 * 1000;
-        let mut abilities: Vec<Box<dyn Ability>> = Vec::new();
+        let abilities: Vec<Box<dyn Ability>> = Vec::new();
 
 
         // Create
@@ -48,12 +48,14 @@ impl Player {
             abilities
         };
 
-        // player.give_ability(Box::new(FireballAbility::default()));
+        // Give Fireball ability
+        player.give_ability(Box::new(FireballAbility::new().await));
 
         player
     }
 
     pub fn update(&mut self, phys: &mut Physics) {
+        // Get physics data to render character
         if let Some(collider) = phys.get_collider_set().get(self.collider_handle.unwrap()) {
             let pos = collider.position();
             let position = vec2(pos.translation.x, pos.translation.y);
@@ -61,6 +63,7 @@ impl Player {
             self.position = centred;
         }
 
+        // Move character with user inputs 
         let mut move_vec = Vec2::ZERO;
         let keys_down = get_keys_down();
         for key in keys_down {
@@ -94,6 +97,8 @@ impl Player {
             ..Default::default()
         };
         draw_texture_ex(&self.texture, self.position.x, self.position.y, WHITE, params);
+
+        // Draw abilities
 
         self.abilities.iter().for_each(|boxxed_ability| {
             boxxed_ability.draw();
