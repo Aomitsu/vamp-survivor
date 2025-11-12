@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 macroquad = "0.4"
 rapier2d = { version = "*", features = [ "simd-stable" ] }
+hecs = "0.10.5"
 noise = "0.9"
 
 [profile.dev.package.rapier3d]
