@@ -2,13 +2,17 @@ use std::default;
 
 use hecs::World;
 use macroquad::prelude::*;
+use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 
-use crate::{components::{Player, Position, RectangleLines, Speed, Sprite, Velocity}, entity::movement_system, physic::{physics_step_system, setup_physics, sync_physics_world, sync_transforms}, player::player_input_system};
+use crate::{asset_server::AssetServer, components::{Player, Speed, Sprite, Transform}, debug::{debug_draw_colliders_system, DebugLines}, enemy::{enemy_ai_system, enemy_spawner_system, EnemySpawner}, physic::{physics_step_system, setup_physics, sync_physics_world, sync_transforms}, player::player_input_system};
 
 mod components;
 mod player;
-mod entity;
+mod enemy;
 mod physic;
+#[cfg(debug_assertions)]
+mod debug;
+mod asset_server;
 fn window_conf() -> Conf {
     Conf {
         window_title: "vamp-survivor".to_owned(),
@@ -21,15 +25,31 @@ fn window_conf() -> Conf {
 async fn main() {
     let mut world = World::new();
     let mut physics_ressources = setup_physics();
+    let mut asset_server = AssetServer::new();
+    let mut enemy_spawner = EnemySpawner::default();
 
-    let player_texture = load_texture("assets/player.png").await.unwrap();
+    if cfg!(debug_assertions) { // Debug only
+        // Entity for debug lines
+        world.spawn((DebugLines(Vec::new()),));
+    }
 
+    // Load initial assets
+    asset_server.prime_assets().await;
+
+    let player_body = RigidBodyBuilder::dynamic().lock_rotations().build();
+    let player_collider = ColliderBuilder::cuboid(16., 16.)
+        .translation([32./2., 32./2.].into())
+        .build();
+
+    // Get texture from AssetServer
+    let player_texture = asset_server.get_texture("assets/player.png").unwrap().clone();
     world.spawn((
         Player,
-        Position(vec2(0.0, 0.0)),
-        Velocity(Vec2::ZERO),
-        Speed(10.),
+        Transform(vec2(0.0, 0.0)),
+        Speed(200.),
         Sprite { texture: player_texture, scale: 1.0 },
+        player_body,
+        player_collider
     ));
 
     loop {
@@ -38,11 +58,19 @@ async fn main() {
         sync_physics_world(&mut world, &mut physics_ressources);
 
         // Do things with entities
-        player_input_system(&mut world);
+        player_input_system(&mut world, &mut physics_ressources);
+        enemy_spawner_system(&mut world, &asset_server, &mut enemy_spawner);
+        enemy_ai_system(&mut world, &mut physics_ressources);
+
 
         // Physics tick related
         physics_step_system(&mut physics_ressources);
         sync_transforms(&mut world, &mut physics_ressources);
+
+        if cfg!(debug_assertions) { // Debug only
+            // Dessine les boîtes de collision pour le débogage
+            debug_draw_colliders_system(&mut world, &physics_ressources);
+        }
 
         draw_world(&mut world);
         // Send frame
@@ -51,7 +79,15 @@ async fn main() {
 }
 
 fn draw_world(world: &mut World) {
-    for(_id, (pos, sprite)) in world.query_mut::<(&Position, &Sprite)>(){
+    let zoom_level = 0.003;
+    set_camera(&Camera2D {
+        zoom: vec2(zoom_level, zoom_level * (screen_width() / screen_height())),
+        //target: player.position_centred(),
+        ..Default::default()
+    });
+
+
+    for(_id, (pos, sprite)) in world.query_mut::<(&Transform, &Sprite)>(){
         draw_texture_ex(
             &sprite.texture,
             pos.0.x,
@@ -63,7 +99,13 @@ fn draw_world(world: &mut World) {
                 }
             )
     }
-    for(_id, (pos, box_to_render)) in world.query_mut::<(&Position, &RectangleLines)>(){
-        draw_rectangle_lines(pos.0.x, pos.0.y, box_to_render.size.x, box_to_render.size.y, box_to_render.thicness, box_to_render.color);
+
+    // Itère sur notre composant de débogage, dessine les lignes, puis nettoie le vecteur pour la prochaine frame.
+    for (_id, debug_lines) in world.query_mut::<&mut DebugLines>() {
+        for line in debug_lines.0.iter() {
+            draw_line(line.from.x, line.from.y, line.to.x, line.to.y, line.thickness, line.color);
+        }
+        // Efface les lignes pour que de nouvelles puissent être ajoutées à la prochaine frame
+        debug_lines.0.clear();
     }
 }

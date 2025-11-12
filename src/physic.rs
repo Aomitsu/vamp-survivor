@@ -1,17 +1,14 @@
 use hecs::{World, Entity};
-use macroquad::prelude::get_frame_time;
+use macroquad::prelude::{get_frame_time, vec2};
 use rapier2d::prelude::*;
+
+use crate::components::Transform;
 
 // A component to hold the handle to the Rapier rigid body.
 pub struct RigidBodyHandleComponent(pub RigidBodyHandle);
 
 // A component to hold the handle to the Rapier collider.
 pub struct ColliderHandleComponent(pub ColliderHandle);
-
-// Example Transform component. Your game would use this to position sprites.
-pub struct Transform {
-    pub position: Isometry<f32>,
-}
 
 /// A struct to hold all the Rapier physics resources.
 /// This can be stored in your main game state and passed to systems.
@@ -30,22 +27,14 @@ pub struct PhysicsResources {
 
 /// Creates the initial physics resources.
 pub fn setup_physics() -> PhysicsResources {
-    let mut rigid_body_set = RigidBodySet::new();
-    let mut collider_set = ColliderSet::new();
-
-    // This ground collider is static. In a real game, you might want to
-    // create this as a proper entity with a collider component.
-    let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
-    collider_set.insert(collider);
-
     PhysicsResources {
         integration_parameters: IntegrationParameters::default(),
         physics_pipeline: PhysicsPipeline::new(),
         island_manager: IslandManager::new(),
         broad_phase: DefaultBroadPhase::new(),
         narrow_phase: NarrowPhase::new(),
-        rigid_body_set,
-        collider_set,
+        rigid_body_set: RigidBodySet::new(),
+        collider_set: ColliderSet::new(),
         impulse_joint_set: ImpulseJointSet::new(),
         multibody_joint_set: MultibodyJointSet::new(),
         ccd_solver: CCDSolver::new(),
@@ -97,7 +86,7 @@ pub fn sync_physics_world(world: &mut World, physics: &mut PhysicsResources) {
 pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
     for (_entity, (transform, body_handle)) in world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>() {
         if let Some(body) = physics.rigid_body_set.get(body_handle.0) {
-            transform.position = *body.position();
+            transform.0 = vec2(body.translation().x, body.translation().y);
         }
     }
 }
