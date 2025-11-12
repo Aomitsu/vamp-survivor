@@ -1,124 +1,103 @@
+use hecs::{World, Entity};
+use macroquad::prelude::get_frame_time;
 use rapier2d::prelude::*;
-use macroquad::prelude::*;
 
-/// Physic implementation
-/// using rapier.
-/// 
-/// Used for Player, Ennemies, bullets, etc...
-pub struct Physics{
-    rigid_body_set: RigidBodySet,
-    collider_set: ColliderSet,
-    integration_parameters: IntegrationParameters,
-    physics_pipeline: PhysicsPipeline,
-    island_manager: IslandManager,
-    broad_phase: DefaultBroadPhase,
-    narrow_phase: NarrowPhase,
-    impulse_joint_set: ImpulseJointSet,
-    multibody_joint_set: MultibodyJointSet,
-    ccd_solver: CCDSolver,
-    physics_hooks: (),
-    event_handler: ()
+// A component to hold the handle to the Rapier rigid body.
+pub struct RigidBodyHandleComponent(pub RigidBodyHandle);
+
+// A component to hold the handle to the Rapier collider.
+pub struct ColliderHandleComponent(pub ColliderHandle);
+
+// Example Transform component. Your game would use this to position sprites.
+pub struct Transform {
+    pub position: Isometry<f32>,
 }
 
-pub struct PhysicsDebugInfo {
-    pub rbody_set_size: usize,
-    pub collider_set_size: usize,
+/// A struct to hold all the Rapier physics resources.
+/// This can be stored in your main game state and passed to systems.
+pub struct PhysicsResources {
+    pub integration_parameters: IntegrationParameters,
+    pub physics_pipeline: PhysicsPipeline,
+    pub island_manager: IslandManager,
+    pub broad_phase: DefaultBroadPhase,
+    pub narrow_phase: NarrowPhase,
+    pub rigid_body_set: RigidBodySet,
+    pub collider_set: ColliderSet,
+    pub impulse_joint_set: ImpulseJointSet,
+    pub multibody_joint_set: MultibodyJointSet,
+    pub ccd_solver: CCDSolver,
 }
 
+/// Creates the initial physics resources.
+pub fn setup_physics() -> PhysicsResources {
+    let mut rigid_body_set = RigidBodySet::new();
+    let mut collider_set = ColliderSet::new();
 
-impl Physics {
-    /// Create new physic universe
-    pub fn new() -> Self {
-        let rigid_body_set = RigidBodySet::new();
-        let mut collider_set = ColliderSet::new();
-        let integration_parameters = IntegrationParameters::default();
-        let physics_pipeline = PhysicsPipeline::new();
-        let island_manager = IslandManager::new();
-        let broad_phase = DefaultBroadPhase::new();
-        let narrow_phase = NarrowPhase::new();
-        let impulse_joint_set = ImpulseJointSet::new();
-        let multibody_joint_set = MultibodyJointSet::new();
-        let ccd_solver = CCDSolver::new();
-        let physics_hooks = ();
-        let event_handler = ();
+    // This ground collider is static. In a real game, you might want to
+    // create this as a proper entity with a collider component.
+    let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
+    collider_set.insert(collider);
 
-        let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
-        collider_set.insert(collider);
+    PhysicsResources {
+        integration_parameters: IntegrationParameters::default(),
+        physics_pipeline: PhysicsPipeline::new(),
+        island_manager: IslandManager::new(),
+        broad_phase: DefaultBroadPhase::new(),
+        narrow_phase: NarrowPhase::new(),
+        rigid_body_set,
+        collider_set,
+        impulse_joint_set: ImpulseJointSet::new(),
+        multibody_joint_set: MultibodyJointSet::new(),
+        ccd_solver: CCDSolver::new(),
+    }
+}
 
-        Physics { rigid_body_set, collider_set, integration_parameters, physics_pipeline, island_manager, broad_phase, narrow_phase, impulse_joint_set, multibody_joint_set, ccd_solver, physics_hooks, event_handler }
+/// The main physics simulation system.
+pub fn physics_step_system(physics: &mut PhysicsResources) {
+    let gravity = vector![0.0, 0.0]; // Top-down, no gravity.
+    physics.integration_parameters.dt = get_frame_time();
 
+    let physics_hooks = ();
+    let event_handler = ();
+
+    physics.physics_pipeline.step(
+        &gravity,
+        &physics.integration_parameters,
+        &mut physics.island_manager,
+        &mut physics.broad_phase,
+        &mut physics.narrow_phase,
+        &mut physics.rigid_body_set,
+        &mut physics.collider_set,
+        &mut physics.impulse_joint_set,
+        &mut physics.multibody_joint_set,
+        &mut physics.ccd_solver,
+        &physics_hooks,
+        &event_handler,
+    );
+}
+
+/// A system that finds entities with `RigidBody` and `Collider` components
+/// and adds them to the physics world.
+pub fn sync_physics_world(world: &mut World, physics: &mut PhysicsResources) {
+    let mut commands = Vec::<(Entity, RigidBodyHandleComponent, ColliderHandleComponent)>::new();
+    // Query for entities that have a body and collider but no handle yet.
+    for (entity, (body, collider)) in world.query_mut::<(&RigidBody, &Collider)>().without::<&RigidBodyHandleComponent>() {
+        let body_handle = physics.rigid_body_set.insert(body.clone());
+        let collider_handle = physics.collider_set.insert_with_parent(collider.clone(), body_handle, &mut physics.rigid_body_set);
+        commands.push((entity, RigidBodyHandleComponent(body_handle), ColliderHandleComponent(collider_handle)));
     }
 
-    /// Update the physic universe
-    pub fn update(&mut self) {
-        // Set gravity to none, top down view so useless.
-        let gravity = vector![0.0, 0.0];
-        // Using frametime
-        self.integration_parameters.dt = get_frame_time();
-
-        // Update physics
-        self.physics_pipeline.step(
-            &gravity,
-            &self.integration_parameters,
-            &mut self.island_manager,
-            &mut self.broad_phase,
-            &mut self.narrow_phase,
-            &mut self.rigid_body_set,
-            &mut self.collider_set,
-            &mut self.impulse_joint_set,
-            &mut self.multibody_joint_set,
-            &mut self.ccd_solver,
-            &self.physics_hooks,
-            &self.event_handler
-        );
+    // Add the handles as components to the entities.
+    for (entity, body_handle, collider_handle) in commands {
+        world.insert(entity, (body_handle, collider_handle)).unwrap();
     }
+}
 
-    // Draw debug lines such as colliders.
-    pub fn draw(&self, is_debug: bool) {
-        if !is_debug {return;}
-        // For each colliders
-        for (_handle, collider) in self.collider_set.iter() {
-            let position = collider.position();
-            let shape = collider.shape();
-
-            // Draw the collider
-            if let Some(cuboid) = shape.as_cuboid() {
-                let extents = cuboid.half_extents;
-                let width = extents.x * 2.0;
-                let height = extents.y * 2.0;
-
-                // Collider pos is at center in rapier, adapt it to macroquad position.
-                let top_left_x = position.translation.x - extents.x;
-                let top_left_y = position.translation.y - extents.y;
-
-                // Draw collider
-                draw_rectangle_lines(top_left_x, top_left_y, width, height, 2.0, LIME);
-            }
+/// A system to update the `Transform` of entities based on the physics simulation.
+pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
+    for (_entity, (transform, body_handle)) in world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>() {
+        if let Some(body) = physics.rigid_body_set.get(body_handle.0) {
+            transform.position = *body.position();
         }
-    }
-
-    pub fn debug_info(&self) -> PhysicsDebugInfo {
-        // return some debug infos
-        PhysicsDebugInfo { rbody_set_size: self.rigid_body_set.len(), collider_set_size: self.collider_set.len() }
-    }
-
-    /// Register rigibody with collider, and set parental relation.
-    pub fn register_with_parent(&mut self, rigid_body: RigidBody, collider: Collider) -> (RigidBodyHandle, ColliderHandle) {
-        let handle_rigid_body: RigidBodyHandle = self.rigid_body_set.insert(rigid_body);
-        let handle_collider: ColliderHandle = self.collider_set.insert_with_parent(collider, handle_rigid_body, &mut self.rigid_body_set);
-        (handle_rigid_body, handle_collider)
-    
-    }
-
-    pub fn _get_rigid_body_set(&self) -> &RigidBodySet {
-        &self.rigid_body_set
-    }
-
-    pub fn get_collider_set(&self) -> &ColliderSet {
-        &self.collider_set
-    }
-
-    pub fn get_rigid_body_set_mut(&mut self) -> &mut RigidBodySet {
-        &mut self.rigid_body_set
     }
 }
