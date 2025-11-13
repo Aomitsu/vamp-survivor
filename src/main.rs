@@ -4,7 +4,7 @@ use hecs::World;
 use macroquad::prelude::*;
 use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
 
-use crate::{asset_server::AssetServer, components::{Player, Speed, Sprite, Transform}, enemy::{EnemySpawner, enemy_ai_system, enemy_spawner_system}, physic::{collision_register, physics_step_system, setup_physics, sync_physics_world, sync_transforms}, player::{detect_player_dead, player_input_system, spawn_player}};
+use crate::{asset_server::AssetServer, components::{Player, Speed, Sprite, Text, Transform}, debug::{DebugData, debug_draw, debug_infos_system}, enemy::{EnemySpawner, enemy_ai_system, enemy_spawner_system}, physic::{collision_register, physics_step_system, setup_physics, sync_physics_world, sync_transforms}, player::{detect_player_dead, player_input_system, spawn_player}};
 
 use crate::debug::{debug_draw_colliders_system, DebugLines};
 mod debug;
@@ -34,6 +34,8 @@ async fn main() {
     if cfg!(debug_assertions) { // Debug only
         // Entity for debug lines
         world.spawn((DebugLines(Vec::new()),));
+        world.spawn((DebugData::new(),));
+
     }
 
     // Load initial assets
@@ -61,6 +63,7 @@ async fn main() {
         if cfg!(debug_assertions) { // Debug only
             // Dessine les boîtes de collision pour le débogage
             debug_draw_colliders_system(&mut world, &physics_ressources);
+            debug_infos_system(&mut world);
         }
 
         draw_world(&mut world);
@@ -90,14 +93,16 @@ fn draw_world(world: &mut World) {
                 }
             )
     }
-    if cfg!(debug_assertions) {
-        // Search debug component to loop & draw all lines.
-        for (_id, debug_lines) in world.query_mut::<&mut DebugLines>() {
-            for line in debug_lines.0.iter() {
-                draw_line(line.from.x, line.from.y, line.to.x, line.to.y, line.thickness, line.color);
-            }
-        // Remove lines at each frame
-        debug_lines.0.clear();
+
+    for(_id, (pos, text)) in world.query_mut::<(&Transform, &Text)>(){
+        draw_text_ex(text.text.as_str(), pos.0.x, pos.0.y, TextParams { 
+            color: text.color,
+            ..Default::default()
+         });
     }
-}
+
+
+    if cfg!(debug_assertions) {
+        debug_draw(world);
+    }
 }

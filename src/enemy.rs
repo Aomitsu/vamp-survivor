@@ -18,7 +18,7 @@ impl Default for EnemySpawner {
     fn default() -> Self {
         Self {
             timer: 0.0,
-            spawn_interval: 2.0,
+            spawn_interval: 0.1,
         }
     }
 }
