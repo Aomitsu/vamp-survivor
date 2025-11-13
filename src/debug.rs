@@ -50,3 +50,4 @@ pub fn debug_draw_colliders_system(world: &mut World, physics: &PhysicsResources
         }
     }
 }
+
