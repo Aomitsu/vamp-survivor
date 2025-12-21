@@ -13,7 +13,7 @@
                 "args": [
                     "build",
                     "--bin=vamp-survivor",
-                    "--package=vamp-survivor"
+                    "--package=vamp-survivor",
                 ],
                 "filter": {
                     "name": "vamp-survivor",

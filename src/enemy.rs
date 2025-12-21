@@ -1,10 +1,10 @@
 use hecs::World;
 use macroquad::prelude::*;
-use rapier2d::prelude::{ColliderBuilder, RigidBodyBuilder};
+use rapier2d::prelude::*;
 
 use crate::{
-    asset_server::AssetServer,
-    components::{Enemy, Player, Speed, Sprite, Transform},
+    asset_server::{self, AssetServer},
+    components::{Damage, Enemy, Player, Speed, Sprite, Transform},
     physic::{PhysicsResources, RigidBodyHandleComponent},
 };
 
@@ -18,37 +18,38 @@ impl Default for EnemySpawner {
     fn default() -> Self {
         Self {
             timer: 0.0,
-            spawn_interval: 2.0,
+            spawn_interval: 0.5,
         }
     }
 }
 
 pub fn enemy_spawner_system(
     world: &mut World,
-    asset_server: &AssetServer,
     spawner: &mut EnemySpawner,
 ) {
     spawner.timer += get_frame_time();
 
     if spawner.timer >= spawner.spawn_interval {
         spawner.timer = 0.0;
-
-        let enemy_texture = asset_server.get_texture("assets/ennemy.png").unwrap().clone();
-
-        let enemy_body = RigidBodyBuilder::dynamic().lock_rotations().build();
-        let enemy_collider = ColliderBuilder::cuboid(16., 16.)
-            .translation([32. / 2., 32. / 2.].into())
-            .build();
-
+        
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
+
+        let enemy_body = RigidBodyBuilder::dynamic()
+            .translation([spawn_position.x, spawn_position.y].into())
+            .lock_rotations().build();
+        let enemy_collider = ColliderBuilder::cuboid(16., 16.)
+            .translation([32. / 2., 32. / 2.].into())
+            .active_events(ActiveEvents::COLLISION_EVENTS)
+            .build();
 
         world.spawn((
             Enemy,
             Transform(spawn_position),
-            Speed(100.0),
+            Speed(80.0),
+            Damage(10.0),
             Sprite {
-                texture: enemy_texture,
+                asset_id: asset_server::assets::enemy(),
                 scale: 1.0,
             },
             enemy_body,
