@@ -1,55 +1,94 @@
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+use log::{error, info};
 use macroquad::prelude::*;
+use futures::future::join_all;
 
-#[derive(Debug)]
-pub enum AssetState<T> {
-    Loading,
-    Loaded(T),
-}
+pub type AssetId = u64;
 
-#[derive(Debug)]
+/// Why using hash as asset id and not string ?
+/// cf. https://gameprogrammingpatterns.com/data-locality.html
+/// 
+/// 
 pub struct AssetServer {
-    textures: HashMap<String, AssetState<Texture2D>>,
+    textures: HashMap<AssetId, Texture2D>,
+    missing_texture: Texture2D,
+    // For debug, keep a link between ID and Path
+    #[cfg(debug_assertions)]
+    debug_names: HashMap<AssetId, String>,
 }
 
 impl AssetServer {
     pub fn new() -> Self {
+        let missing_img = Image::gen_image_color(1, 1, MAGENTA);
+        let missing_texture = Texture2D::from_image(&missing_img);
+
         Self {
             textures: HashMap::new(),
+            missing_texture,
+            #[cfg(debug_assertions)]
+            debug_names: HashMap::new(),
         }
     }
 
-    // Pre-load textures before usage
-    pub fn load_texture(&mut self, path: &str) {
-        let path_str = path.to_string();
-        if self.textures.contains_key(&path_str) {
-            return;
+    pub fn compute_id(path: &str) -> AssetId {
+        let mut hasher = DefaultHasher::new();
+        path.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub fn get_texture(&self, id: AssetId) -> &Texture2D {
+        match self.textures.get(&id) {
+            Some(tex) => tex,
+            None => {
+                #[cfg(debug_assertions)]
+                {
+                    use log::error;
+
+                    let name = self.debug_names.get(&id).map(|s| s.as_str()).unwrap_or("UNKNOWN_ID");
+                    error!("Texture ID {} ({}) not found!", id, name);
+                }
+                &self.missing_texture
+            }
+        }
+    }
+
+    pub async fn load_assets(&mut self, paths: &[&str]) {
+        let mut futures = Vec::new();
+
+        for path in paths {
+            let path_owned = path.to_string();
+            futures.push(async move {
+                let result = load_texture(&path_owned).await;
+                let id = AssetServer::compute_id(&path_owned);
+                (id, path_owned, result)
+            });
         }
 
-        self.textures.insert(path_str.clone(), AssetState::Loading);
+        let results = join_all(futures).await;
 
-        let future = async move {
-            load_texture(&path_str).await
-        };
-    }
-
-    pub fn get_texture(&self, path: &str) -> Option<&Texture2D> {
-        match self.textures.get(path) {
-            Some(AssetState::Loaded(texture)) => Some(texture),
-            _ => None,
+        for (id, path, result) in results {
+            match result {
+                Ok(texture) => {
+                    texture.set_filter(FilterMode::Nearest);
+                    self.textures.insert(id, texture);
+                    
+                    #[cfg(debug_assertions)]
+                    self.debug_names.insert(id, path.clone());
+                    
+                    info!("Asset Loaded: {} -> ID: {}", path, id);
+                }
+                Err(e) => error!("Loading asset {}: {}", path, e),
+            }
         }
     }
+}
 
-    async fn load_and_store_texture(&mut self, path: &str) {
-        let texture = load_texture(path).await.unwrap();
-        texture.set_filter(FilterMode::Nearest);
-        self.textures.insert(path.to_string(), AssetState::Loaded(texture));
-    }
+pub mod assets {
+    use super::AssetServer;
+    use super::AssetId;
 
-    // Load all initial assets
-    pub async fn prime_assets(&mut self) {
-        self.load_and_store_texture("assets/player.png").await;
-        self.load_and_store_texture("assets/ennemy.png").await;
-        
-    }
+    pub fn player() -> AssetId { AssetServer::compute_id("assets/player.png") }
+    pub fn enemy() -> AssetId { AssetServer::compute_id("assets/enemy.png") }
 }

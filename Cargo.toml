@@ -9,6 +9,7 @@ rapier2d = { version = "*", features = [ "simd-stable" ] }
 hecs = "0.10.5"
 log = "0.4.28"
 env_logger = "0.11.8"
+futures = "0.3"
 
 [profile.dev.package.rapier2d]
 opt-level = 3

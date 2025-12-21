@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
 use crate::{
-    asset_server::AssetServer,
+    asset_server::{self, AssetServer},
     components::{Damage, Enemy, Player, Speed, Sprite, Transform},
     physic::{PhysicsResources, RigidBodyHandleComponent},
 };
@@ -18,22 +18,19 @@ impl Default for EnemySpawner {
     fn default() -> Self {
         Self {
             timer: 0.0,
-            spawn_interval: 0.1,
+            spawn_interval: 0.5,
         }
     }
 }
 
 pub fn enemy_spawner_system(
     world: &mut World,
-    asset_server: &AssetServer,
     spawner: &mut EnemySpawner,
 ) {
     spawner.timer += get_frame_time();
 
     if spawner.timer >= spawner.spawn_interval {
         spawner.timer = 0.0;
-
-        let enemy_texture = asset_server.get_texture("assets/ennemy.png").unwrap().clone();
         
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
@@ -49,10 +46,10 @@ pub fn enemy_spawner_system(
         world.spawn((
             Enemy,
             Transform(spawn_position),
-            Speed(100.0),
+            Speed(80.0),
             Damage(10.0),
             Sprite {
-                texture: enemy_texture,
+                asset_id: asset_server::assets::enemy(),
                 scale: 1.0,
             },
             enemy_body,

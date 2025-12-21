@@ -93,7 +93,7 @@ pub fn debug_infos_system(world: &mut World){
         }
 
         log::info!("FPS : {}; avg FPS : {}; Frame Time: {}; avg Frame Time {}", get_fps(), debug_data.avg_fps, get_frame_time(), debug_data.avg_frame_time)
-
+        
     }
 }
 
