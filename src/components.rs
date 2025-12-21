@@ -1,5 +1,7 @@
 use macroquad::prelude::*;
 
+use crate::asset_server::AssetId;
+
 pub struct Transform(pub Vec2);
 pub struct Speed(pub f32);
 pub struct Health{
@@ -10,7 +12,7 @@ pub struct Damage(pub f32);
 
 // Drawing
 pub struct Sprite {
-    pub texture: Texture2D,
+    pub asset_id: AssetId,
     pub scale: f32
 }
 /// Text component to draw text.

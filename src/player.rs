@@ -4,7 +4,7 @@ use rapier2d::prelude::*;
 
 use crate::{asset_server::{self, AssetServer}, components::*, physic::{self, CollideWith, PhysicsResources, RigidBodyHandleComponent}};
 
-pub fn spawn_player(world: &mut World, asset_server: &AssetServer){
+pub fn spawn_player(world: &mut World){
     let player_body = RigidBodyBuilder::dynamic().lock_rotations().build();
     let player_collider = ColliderBuilder::cuboid(16., 16.)
         .active_events(ActiveEvents::COLLISION_EVENTS)
@@ -12,12 +12,14 @@ pub fn spawn_player(world: &mut World, asset_server: &AssetServer){
         .build();
 
     // Get texture from AssetServer
-    let player_texture = asset_server.get_texture("assets/player.png").unwrap().clone();
     world.spawn((
         Player,
         Transform(vec2(0.0, 0.0)),
         Speed(200.),
-        Sprite { texture: player_texture, scale: 1.0 },
+        Sprite { 
+            asset_id: asset_server::assets::player(),
+            scale: 1.0 
+        },
         player_body,
         player_collider,
         Health { actual: 100., max: 100. }
