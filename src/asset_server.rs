@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
+use futures::future::join_all;
 use log::{error, info};
 use macroquad::prelude::*;
-use futures::future::join_all;
+use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub type AssetId = u64;
 
 /// Why using hash as asset id and not string ?
 /// cf. https://gameprogrammingpatterns.com/data-locality.html
-/// 
-/// 
+///
+///
 pub struct AssetServer {
     textures: HashMap<AssetId, Texture2D>,
     missing_texture: Texture2D,
@@ -46,7 +46,11 @@ impl AssetServer {
                 {
                     use log::error;
 
-                    let name = self.debug_names.get(&id).map(|s| s.as_str()).unwrap_or("UNKNOWN_ID");
+                    let name = self
+                        .debug_names
+                        .get(&id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("UNKNOWN_ID");
                     error!("Texture ID {} ({}) not found!", id, name);
                 }
                 &self.missing_texture
@@ -73,10 +77,10 @@ impl AssetServer {
                 Ok(texture) => {
                     texture.set_filter(FilterMode::Nearest);
                     self.textures.insert(id, texture);
-                    
+
                     #[cfg(debug_assertions)]
                     self.debug_names.insert(id, path.clone());
-                    
+
                     info!("Asset Loaded: {} -> ID: {}", path, id);
                 }
                 Err(e) => error!("Loading asset {}: {}", path, e),
@@ -86,9 +90,13 @@ impl AssetServer {
 }
 
 pub mod assets {
-    use super::AssetServer;
     use super::AssetId;
+    use super::AssetServer;
 
-    pub fn player() -> AssetId { AssetServer::compute_id("assets/player.png") }
-    pub fn enemy() -> AssetId { AssetServer::compute_id("assets/enemy.png") }
+    pub fn player() -> AssetId {
+        AssetServer::compute_id("assets/player.png")
+    }
+    pub fn enemy() -> AssetId {
+        AssetServer::compute_id("assets/enemy.png")
+    }
 }

@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use hecs::{World, Entity};
+use hecs::{Entity, World};
 use log::debug;
 use macroquad::prelude::{get_frame_time, vec2};
 use rapier2d::prelude::*;
@@ -32,15 +32,13 @@ pub struct PhysicsResources {
     pub collision_event_sender: Sender<CollisionEvent>,
     pub collision_event_receiver: Receiver<CollisionEvent>,
     pub contact_force_sender: Sender<ContactForceEvent>,
-    pub contact_force_receiver: Receiver<ContactForceEvent>
+    pub contact_force_receiver: Receiver<ContactForceEvent>,
 }
 
 /// Creates the initial physics resources.
 pub fn setup_physics() -> PhysicsResources {
-
     let (collision_sender, collision_receiver) = std::sync::mpsc::channel();
     let (force_sender, force_receiver) = std::sync::mpsc::channel();
-
 
     PhysicsResources {
         integration_parameters: IntegrationParameters::default(),
@@ -66,7 +64,10 @@ pub fn physics_step_system(physics: &mut PhysicsResources) {
     physics.integration_parameters.dt = get_frame_time();
 
     let physics_hooks = ();
-    let event_handler = ChannelEventCollector::new(physics.collision_event_sender.clone(), physics.contact_force_sender.clone());
+    let event_handler = ChannelEventCollector::new(
+        physics.collision_event_sender.clone(),
+        physics.contact_force_sender.clone(),
+    );
 
     physics.physics_pipeline.step(
         &gravity,
@@ -87,26 +88,47 @@ pub fn physics_step_system(physics: &mut PhysicsResources) {
 /// A system that finds entities with `RigidBody` and `Collider` components
 /// and adds them to the physics world.
 pub fn sync_physics_world(world: &mut World, physics: &mut PhysicsResources) {
-    let mut commands = Vec::<(Entity, RigidBodyHandleComponent, ColliderHandleComponent, CollideWith)>::new();
+    let mut commands = Vec::<(
+        Entity,
+        RigidBodyHandleComponent,
+        ColliderHandleComponent,
+        CollideWith,
+    )>::new();
     // Query for entities that have a body and collider but no handle yet.
-    for (entity, (body, mut collider)) in world.query_mut::<(&RigidBody, &mut Collider)>().without::<&RigidBodyHandleComponent>() {
+    for (entity, (body, collider)) in world
+        .query_mut::<(&RigidBody, &mut Collider)>()
+        .without::<&RigidBodyHandleComponent>()
+    {
         // Store the entity's bits in the collider's user_data field.
         collider.user_data = entity.to_bits().get() as u128;
         let body_handle = physics.rigid_body_set.insert(body.clone());
-        let collider_handle = physics.collider_set.insert_with_parent(collider.clone(), body_handle, &mut physics.rigid_body_set); // This line was missing from the original context
-        commands.push((entity, RigidBodyHandleComponent(body_handle), ColliderHandleComponent(collider_handle), CollideWith(Vec::new())));
+        let collider_handle = physics.collider_set.insert_with_parent(
+            collider.clone(),
+            body_handle,
+            &mut physics.rigid_body_set,
+        ); // This line was missing from the original context
+        commands.push((
+            entity,
+            RigidBodyHandleComponent(body_handle),
+            ColliderHandleComponent(collider_handle),
+            CollideWith(Vec::new()),
+        ));
     }
 
     // Add the handles as components to the entities.
     for (entity, body_handle, collider_handle, collide_with) in commands {
-        world.insert(entity, (body_handle, collider_handle, collide_with)).unwrap();
+        world
+            .insert(entity, (body_handle, collider_handle, collide_with))
+            .unwrap();
         debug!("Insert Physics components to new entity {:?}", entity)
     }
 }
 
 /// A system to update the `Transform` of entities based on the physics simulation.
 pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
-    for (_entity, (transform, body_handle)) in world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>() {
+    for (_entity, (transform, body_handle)) in
+        world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>()
+    {
         if let Some(body) = physics.rigid_body_set.get(body_handle.0) {
             transform.0 = vec2(body.translation().x, body.translation().y);
         }
@@ -114,7 +136,10 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
 }
 
 /// Helper function to extract entities from a collision event.
-pub fn get_entities_from_collision(event: CollisionEvent, colliders: &ColliderSet) -> Option<(Entity, Entity, CollisionEvent)> {
+pub fn get_entities_from_collision(
+    event: CollisionEvent,
+    colliders: &ColliderSet,
+) -> Option<(Entity, Entity, CollisionEvent)> {
     let (handle1, handle2) = match event {
         CollisionEvent::Started(h1, h2, _) => (h1, h2),
         CollisionEvent::Stopped(h1, h2, _) => (h1, h2),
@@ -130,7 +155,9 @@ pub fn get_entities_from_collision(event: CollisionEvent, colliders: &ColliderSe
 }
 pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
     while let Ok(collision_event) = physics.collision_event_receiver.try_recv() {
-        if let Some((entity1, entity2, event)) = get_entities_from_collision(collision_event, &physics.collider_set) {
+        if let Some((entity1, entity2, event)) =
+            get_entities_from_collision(collision_event, &physics.collider_set)
+        {
             match event {
                 CollisionEvent::Started(_, _, _) => {
                     debug!("Collision started between {:?} and {:?}", entity1, entity2);
@@ -140,21 +167,29 @@ pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2) {
                         collide_with.0.push(entity1);
                     }
-                },
+                }
                 CollisionEvent::Stopped(_, _, _) => {
                     debug!("Collision stopped between {:?} and {:?}", entity1, entity2);
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity1) {
-                        if let Some(index) = collide_with.0.iter().position(|value| value.id() == entity2.id()) {
+                        if let Some(index) = collide_with
+                            .0
+                            .iter()
+                            .position(|value| value.id() == entity2.id())
+                        {
                             collide_with.0.remove(index);
                         }
                     }
 
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2) {
-                        if let Some(index) = collide_with.0.iter().position(|value| value.id() == entity1.id()) {
+                        if let Some(index) = collide_with
+                            .0
+                            .iter()
+                            .position(|value| value.id() == entity1.id())
+                        {
                             collide_with.0.remove(index);
                         }
                     }
-                },
+                }
             }
         }
     }
