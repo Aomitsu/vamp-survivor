@@ -37,10 +37,10 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
 
     for (_id, (transform, sprite)) in &mut world.query::<(&Transform, &Sprite)>() {
         let texture = asset_server.get_texture(sprite.asset_id);
-        let w = texture.width() * sprite.scale;
-        let h = texture.height() * sprite.scale;
+        let w = texture.width() * sprite.scale * transform.scale.x;
+        let h = texture.height() * sprite.scale * transform.scale.y;
 
-        let sprite_rect = Rect::new(transform.0.x, transform.0.y, w, h);
+        let sprite_rect = Rect::new(transform.position.x, transform.position.y, w, h);
 
         if !view_rect.overlaps(&sprite_rect) {
             continue;
@@ -48,14 +48,15 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
 
         draw_texture_ex(
             &texture,
-            transform.0.x,
-            transform.0.y,
+            transform.position.x,
+            transform.position.y,
             WHITE,
             DrawTextureParams {
                 dest_size: Some(vec2(
-                    texture.width() * sprite.scale,
-                    texture.height() * sprite.scale,
+                    w,
+                    h,
                 )),
+                rotation: transform.rotation,
                 ..Default::default()
             },
         )
@@ -64,8 +65,8 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
     for (_id, (pos, text)) in &mut world.query::<(&Transform, &Text)>() {
         draw_text_ex(
             text.text.as_str(),
-            pos.0.x,
-            pos.0.y,
+            pos.position.x,
+            pos.position.y,
             TextParams {
                 color: text.color,
                 ..Default::default()

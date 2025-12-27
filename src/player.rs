@@ -18,7 +18,10 @@ pub fn spawn_player(world: &mut World) {
     // Get texture from AssetServer
     world.spawn((
         Player,
-        Transform(vec2(0.0, 0.0)),
+        Transform {
+            position: vec2(0.0, 0.0),
+            ..Default::default()
+        },
         Speed(200.),
         Sprite {
             asset_id: asset_server::assets::player(),

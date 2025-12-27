@@ -42,7 +42,10 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
 
         world.spawn((
             Enemy,
-            Transform(spawn_position),
+            Transform {
+                position: spawn_position,
+                ..Default::default()
+            },
             Speed(80.0),
             Damage(10.0),
             Sprite {
@@ -58,7 +61,7 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
 pub fn enemy_ai_system(world: &mut World, physics: &mut PhysicsResources) {
     let mut player_pos = None;
     for (_id, (transform,)) in world.query::<(&Transform,)>().with::<&Player>().iter() {
-        player_pos = Some(transform.0);
+        player_pos = Some(transform.position);
         break;
     }
 
@@ -67,7 +70,7 @@ pub fn enemy_ai_system(world: &mut World, physics: &mut PhysicsResources) {
             .query_mut::<(&Transform, &Speed, &RigidBodyHandleComponent)>()
             .with::<&Enemy>()
         {
-            let direction = (player_pos - transform.0).normalize_or_zero();
+            let direction = (player_pos - transform.position).normalize_or_zero();
             let desired_velocity = direction * speed.0;
             if let Some(body) = physics.rigid_body_set.get_mut(rb_handle.0) {
                 body.set_linvel([desired_velocity.x, desired_velocity.y].into(), true);

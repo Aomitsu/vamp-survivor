@@ -6,7 +6,8 @@ use crate::{
     debug::{DebugData, debug_infos_system},
     enemy::{EnemySpawner, enemy_ai_system, enemy_spawner_system},
     physic::{
-        collision_register, physics_step_system, setup_physics, sync_physics_world, sync_transforms,
+        collision_register, physics_cleanup_system, physics_step_system, setup_physics,
+        sync_physics_world, sync_transforms,
     },
     player::{detect_player_dead, player_input_system, spawn_player},
     render::draw_world,
@@ -54,6 +55,7 @@ async fn main() {
 
     loop {
         clear_background(GRAY);
+        physics_cleanup_system(&mut world, &mut physics_ressources);
         // Update physics
         sync_physics_world(&mut world, &mut physics_ressources);
         collision_register(&mut world, &mut physics_ressources);

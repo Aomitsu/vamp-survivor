@@ -6,7 +6,7 @@ use log::debug;
 use macroquad::prelude::{get_frame_time, vec2};
 use rapier2d::prelude::*;
 
-use crate::components::Transform;
+use crate::components::{Despawn, Transform};
 
 const PHYSIC_TICKRATE: f32 = 1.0 / 60.0;
 const GRAVITY: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>> = vector![0.0, 0.0]; // Top-down, no gravity.
@@ -161,8 +161,40 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
             let x = previous_pos.x * (1.0 - alpha) + current_pos.x * alpha;
             let y = previous_pos.y * (1.0 - alpha) + current_pos.y * alpha;
 
-            transform.0 = vec2(x, y);
+            transform.position = vec2(x, y);
+            transform.rotation = body.rotation().angle();
         }
+    }
+}
+
+/// System to clean up physics resources for entities marked for despawn.
+/// This acts as a "hook" for deletion events.
+pub fn physics_cleanup_system(world: &mut World, physics: &mut PhysicsResources) {
+    let mut entities_to_remove = Vec::new();
+
+    // 1. Collect all entities marked with Despawn
+    for (entity, _) in world.query::<&Despawn>().iter() {
+        entities_to_remove.push(entity);
+    }
+
+    // 2. Clean up resources and despawn
+    for entity in entities_to_remove {
+        // Remove RigidBody from Rapier if it exists
+        if let Ok(handle) = world.get::<&RigidBodyHandleComponent>(entity) {
+            physics.rigid_body_set.remove(
+                handle.0,
+                &mut physics.island_manager,
+                &mut physics.collider_set,
+                &mut physics.impulse_joint_set,
+                &mut physics.multibody_joint_set,
+                true,
+            );
+            physics.previous_positions.remove(&handle.0);
+            debug!("Physics body removed for entity {:?}", entity);
+        }
+
+        // Finally, remove the entity from the ECS
+        let _ = world.despawn(entity);
     }
 }
 
