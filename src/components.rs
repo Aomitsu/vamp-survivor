@@ -47,3 +47,18 @@ pub struct Player;
 pub struct Enemy;
 /// Marker component for entities that should be despawned at the end of the frame.
 pub struct Despawn;
+
+/// Resource to handle Fixed Update Logic (Tick)
+pub struct GameTick {
+    pub tick_rate: f32,
+    pub accumulator: f32,
+}
+
+impl Default for GameTick {
+    fn default() -> Self {
+        Self {
+            tick_rate: 1.0 / 32.0,
+            accumulator: 0.0,
+        }
+    }
+}
