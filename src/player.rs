@@ -42,13 +42,13 @@ pub fn player_input_system(world: &mut World, physics: &mut PhysicsResources) {
         if let Some(body) = physics.rigid_body_set.get_mut(rigibody_handle.0) {
             let mut move_direction = vec2(0.0, 0.0);
 
-            if is_key_down(KeyCode::W) {
+            if is_key_down(KeyCode::Z) {
                 move_direction.y -= 1.0;
             }
             if is_key_down(KeyCode::S) {
                 move_direction.y += 1.0;
             }
-            if is_key_down(KeyCode::A) {
+            if is_key_down(KeyCode::Q) {
                 move_direction.x -= 1.0;
             }
             if is_key_down(KeyCode::D) {
