@@ -10,6 +10,7 @@ use crate::physic::PhysicsResources;
 pub struct DebugLines(pub Vec<LineInfo>);
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DebugData {
     display: bool,
     page: i8,

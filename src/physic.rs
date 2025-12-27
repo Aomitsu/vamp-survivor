@@ -11,18 +11,21 @@ use crate::components::Transform;
 const PHYSIC_TICKRATE: f32 = 1.0 / 60.0;
 const GRAVITY: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>> = vector![0.0, 0.0]; // Top-down, no gravity.
 
-// A component to hold the handle to the Rapier rigid body.
+/// A component to hold the handle to the Rapier rigid body.
 pub struct RigidBodyHandleComponent(pub RigidBodyHandle);
 
-// A component to hold the handle to the Rapier collider.
+/// A component to hold the handle to the Rapier collider.
+#[allow(dead_code)]
 pub struct ColliderHandleComponent(pub ColliderHandle);
 
-// A component who list every entities who collide with
+/// A component who list every entities who collide with
 pub struct CollideWith(pub Vec<Entity>);
 
 /// A struct to hold all the Rapier physics resources.
 /// This can be stored in your main game state and passed to systems.
+#[allow(dead_code)]
 pub struct PhysicsResources {
+    // Basic Rapier physics
     pub integration_parameters: IntegrationParameters,
     pub physics_pipeline: PhysicsPipeline,
     pub island_manager: IslandManager,
@@ -40,7 +43,7 @@ pub struct PhysicsResources {
 
     // Tickrate management
     pub accumulator: f32, // Store time
-    pub previous_positions: HashMap<RigidBodyHandle, nalgebra::Vector2<f32>>,
+    pub previous_positions: HashMap<RigidBodyHandle, nalgebra::Vector2<f32>>, // Store previous positions, for interpolation
 }
 
 /// Creates the initial physics resources.
@@ -68,7 +71,7 @@ pub fn setup_physics() -> PhysicsResources {
     }
 }
 
-/// The main physics simulation system.
+/// Run the next Physic Tick
 pub fn physics_step_system(physics: &mut PhysicsResources) {
 
     physics.accumulator += get_frame_time();
@@ -181,6 +184,8 @@ pub fn get_entities_from_collision(
 
     Some((entity1, entity2, event))
 }
+/// Register collision events
+/// Save it in ECS
 pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
     while let Ok(collision_event) = physics.collision_event_receiver.try_recv() {
         if let Some((entity1, entity2, event)) =
