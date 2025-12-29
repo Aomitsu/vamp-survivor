@@ -1,4 +1,4 @@
-use hecs::World;
+use hecs::{Entity, World};
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
 
@@ -72,6 +72,21 @@ pub fn detect_player_dead(world: &mut World) {
     }
 
     for (_id, health) in world.query::<&Health>().with::<&Player>().iter() {
+        if health.actual <= 0.0 {
+            println!("Player has died! Game Over.");
+        }
+    }
+}
+
+
+pub fn detect_player_dead(world: &mut World) {
+    // Debug show all entity in CollideWith
+    for (_id, collidewith) in world.query::<&CollideWith>().with::<&Player>().iter() {
+        log::debug!("Entities who collide with : {:?}", collidewith.0);
+    }
+
+
+    for (id, health) in world.query::<&Health>().with::<&Player>().iter() {
         if health.actual <= 0.0 {
             println!("Player has died! Game Over.");
         }

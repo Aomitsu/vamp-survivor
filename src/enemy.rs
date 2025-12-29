@@ -27,6 +27,9 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
 
     if spawner.timer >= spawner.spawn_interval {
         spawner.timer = 0.0;
+        
+        // Apparaît à une position fixe pour l'exemple.
+        let spawn_position = vec2(200.0, 200.0);
 
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
