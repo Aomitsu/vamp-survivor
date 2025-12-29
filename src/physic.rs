@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use hecs::{Entity, World};
 use log::debug;
-use macroquad::prelude::{get_frame_time, vec2};
+use macroquad::prelude::vec2;
 use rapier2d::prelude::*;
 
 use crate::components::{Despawn, GameTick, Transform};

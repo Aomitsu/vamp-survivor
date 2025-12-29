@@ -75,6 +75,7 @@ async fn main() {
         while game_tick.accumulator >= game_tick.tick_rate {
             physics_step_system(&mut physics_ressources, &game_tick);
             game_tick.accumulator -= game_tick.tick_rate;
+            game_tick.ticks_elapsed += 1;
         }
 
         sync_transforms(&mut world, &mut physics_ressources, &game_tick);
@@ -83,7 +84,7 @@ async fn main() {
             // Debug only
             // Dessine les boîtes de collision pour le débogage
             debug_draw_colliders_system(&mut world, &physics_ressources);
-            debug_infos_system(&mut world);
+            debug_infos_system(&mut world, &game_tick);
         }
 
         draw_world(&mut world, &asset_server);
