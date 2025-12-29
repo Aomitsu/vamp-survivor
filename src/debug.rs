@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, default};
+use std::collections::VecDeque;
 
 use hecs::World;
 use macroquad::prelude::*;
@@ -10,6 +10,7 @@ use crate::physic::PhysicsResources;
 pub struct DebugLines(pub Vec<LineInfo>);
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DebugData {
     display: bool,
     page: i8,
@@ -43,17 +44,23 @@ pub struct LineInfo {
 impl DebugLines {
     /// Ajoute une ligne à dessiner pour la frame actuelle.
     pub fn draw_line(&mut self, from: Vec2, to: Vec2, thickness: f32, color: Color) {
-        self.0.push(LineInfo { from, to, thickness, color });
+        self.0.push(LineInfo {
+            from,
+            to,
+            thickness,
+            color,
+        });
     }
 }
 
 /// Draw rapier collide box
 pub fn debug_draw_colliders_system(world: &mut World, physics: &PhysicsResources) {
-    let debug_lines = if let Some((_id, lines)) = world.query_mut::<&mut DebugLines>().into_iter().next() {
-        lines
-    } else {
-        return;
-    };
+    let debug_lines =
+        if let Some((_id, lines)) = world.query_mut::<&mut DebugLines>().into_iter().next() {
+            lines
+        } else {
+            return;
+        };
 
     for (_collider_handle, collider) in physics.collider_set.iter() {
         if let Some(cuboid) = collider.shape().as_cuboid() {
@@ -77,7 +84,7 @@ pub fn debug_draw_colliders_system(world: &mut World, physics: &PhysicsResources
     }
 }
 
-pub fn debug_infos_system(world: &mut World){
+pub fn debug_infos_system(world: &mut World) {
     for (_id, debug_data) in world.query_mut::<&mut DebugData>() {
         let frame_time = get_frame_time();
         debug_data.frame_times.push_back(frame_time);
@@ -92,17 +99,29 @@ pub fn debug_infos_system(world: &mut World){
             debug_data.avg_fps = (1.0 / debug_data.avg_frame_time) as i32;
         }
 
-        log::info!("FPS : {}; avg FPS : {}; Frame Time: {}; avg Frame Time {}", get_fps(), debug_data.avg_fps, get_frame_time(), debug_data.avg_frame_time)
-        
+        log::info!(
+            "FPS : {}; avg FPS : {}; Frame Time: {}; avg Frame Time {}",
+            get_fps(),
+            debug_data.avg_fps,
+            get_frame_time(),
+            debug_data.avg_frame_time
+        )
     }
 }
 
 pub fn debug_draw(world: &mut World) {
-        // Search debug component to loop & draw all lines.
-        for (_id, debug_lines) in world.query_mut::<&mut DebugLines>() {
-            for line in debug_lines.0.iter() {
-                draw_line(line.from.x, line.from.y, line.to.x, line.to.y, line.thickness, line.color);
-            }
+    // Search debug component to loop & draw all lines.
+    for (_id, debug_lines) in world.query_mut::<&mut DebugLines>() {
+        for line in debug_lines.0.iter() {
+            draw_line(
+                line.from.x,
+                line.from.y,
+                line.to.x,
+                line.to.y,
+                line.thickness,
+                line.color,
+            );
+        }
         // Remove lines at each frame
         debug_lines.0.clear();
     }

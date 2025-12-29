@@ -1,24 +1,31 @@
 use std::sync::mpsc::{Receiver, Sender};
+use std::collections::HashMap;
 
-use hecs::{World, Entity};
+use hecs::{Entity, World};
 use log::debug;
 use macroquad::prelude::{get_frame_time, vec2};
 use rapier2d::prelude::*;
 
-use crate::components::Transform;
+use crate::components::{Despawn, Transform};
 
-// A component to hold the handle to the Rapier rigid body.
+const PHYSIC_TICKRATE: f32 = 1.0 / 60.0;
+const GRAVITY: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>> = vector![0.0, 0.0]; // Top-down, no gravity.
+
+/// A component to hold the handle to the Rapier rigid body.
 pub struct RigidBodyHandleComponent(pub RigidBodyHandle);
 
-// A component to hold the handle to the Rapier collider.
+/// A component to hold the handle to the Rapier collider.
+#[allow(dead_code)]
 pub struct ColliderHandleComponent(pub ColliderHandle);
 
-// A component who list every entities who collide with
+/// A component who list every entities who collide with
 pub struct CollideWith(pub Vec<Entity>);
 
 /// A struct to hold all the Rapier physics resources.
 /// This can be stored in your main game state and passed to systems.
+#[allow(dead_code)]
 pub struct PhysicsResources {
+    // Basic Rapier physics
     pub integration_parameters: IntegrationParameters,
     pub physics_pipeline: PhysicsPipeline,
     pub island_manager: IslandManager,
@@ -32,15 +39,17 @@ pub struct PhysicsResources {
     pub collision_event_sender: Sender<CollisionEvent>,
     pub collision_event_receiver: Receiver<CollisionEvent>,
     pub contact_force_sender: Sender<ContactForceEvent>,
-    pub contact_force_receiver: Receiver<ContactForceEvent>
+    pub contact_force_receiver: Receiver<ContactForceEvent>,
+
+    // Tickrate management
+    pub accumulator: f32, // Store time
+    pub previous_positions: HashMap<RigidBodyHandle, nalgebra::Vector2<f32>>, // Store previous positions, for interpolation
 }
 
 /// Creates the initial physics resources.
 pub fn setup_physics() -> PhysicsResources {
-
     let (collision_sender, collision_receiver) = std::sync::mpsc::channel();
     let (force_sender, force_receiver) = std::sync::mpsc::channel();
-
 
     PhysicsResources {
         integration_parameters: IntegrationParameters::default(),
@@ -57,64 +66,143 @@ pub fn setup_physics() -> PhysicsResources {
         collision_event_receiver: collision_receiver,
         contact_force_sender: force_sender,
         contact_force_receiver: force_receiver,
+        accumulator: 0.0,
+        previous_positions: HashMap::new(),
     }
 }
 
-/// The main physics simulation system.
+/// Run the next Physic Tick
 pub fn physics_step_system(physics: &mut PhysicsResources) {
-    let gravity = vector![0.0, 0.0]; // Top-down, no gravity.
-    physics.integration_parameters.dt = get_frame_time();
 
-    let physics_hooks = ();
-    let event_handler = ChannelEventCollector::new(physics.collision_event_sender.clone(), physics.contact_force_sender.clone());
+    physics.accumulator += get_frame_time();
+    
+    physics.integration_parameters.dt = PHYSIC_TICKRATE;
 
-    physics.physics_pipeline.step(
-        &gravity,
-        &physics.integration_parameters,
-        &mut physics.island_manager,
-        &mut physics.broad_phase,
-        &mut physics.narrow_phase,
-        &mut physics.rigid_body_set,
-        &mut physics.collider_set,
-        &mut physics.impulse_joint_set,
-        &mut physics.multibody_joint_set,
-        &mut physics.ccd_solver,
-        &physics_hooks,
-        &event_handler,
-    );
+    while physics.accumulator >= PHYSIC_TICKRATE {
+        let physics_hooks = ();
+        let event_handler = ChannelEventCollector::new(
+            physics.collision_event_sender.clone(),
+            physics.contact_force_sender.clone(),
+        );
+
+        for (handle, body) in physics.rigid_body_set.iter() {
+            physics.previous_positions.insert(handle, *body.translation());
+        }
+
+        physics.physics_pipeline.step(
+            &GRAVITY,
+            &physics.integration_parameters,
+            &mut physics.island_manager,
+            &mut physics.broad_phase,
+            &mut physics.narrow_phase,
+            &mut physics.rigid_body_set,
+            &mut physics.collider_set,
+            &mut physics.impulse_joint_set,
+            &mut physics.multibody_joint_set,
+            &mut physics.ccd_solver,
+            &physics_hooks,
+            &event_handler,
+        );
+
+        physics.accumulator -= PHYSIC_TICKRATE;
+    }
 }
 
 /// A system that finds entities with `RigidBody` and `Collider` components
 /// and adds them to the physics world.
 pub fn sync_physics_world(world: &mut World, physics: &mut PhysicsResources) {
-    let mut commands = Vec::<(Entity, RigidBodyHandleComponent, ColliderHandleComponent, CollideWith)>::new();
+    let mut commands = Vec::<(
+        Entity,
+        RigidBodyHandleComponent,
+        ColliderHandleComponent,
+        CollideWith,
+    )>::new();
     // Query for entities that have a body and collider but no handle yet.
-    for (entity, (body, mut collider)) in world.query_mut::<(&RigidBody, &mut Collider)>().without::<&RigidBodyHandleComponent>() {
+    for (entity, (body, collider)) in world
+        .query_mut::<(&RigidBody, &mut Collider)>()
+        .without::<&RigidBodyHandleComponent>()
+    {
         // Store the entity's bits in the collider's user_data field.
         collider.user_data = entity.to_bits().get() as u128;
         let body_handle = physics.rigid_body_set.insert(body.clone());
-        let collider_handle = physics.collider_set.insert_with_parent(collider.clone(), body_handle, &mut physics.rigid_body_set); // This line was missing from the original context
-        commands.push((entity, RigidBodyHandleComponent(body_handle), ColliderHandleComponent(collider_handle), CollideWith(Vec::new())));
+        let collider_handle = physics.collider_set.insert_with_parent(
+            collider.clone(),
+            body_handle,
+            &mut physics.rigid_body_set,
+        ); // This line was missing from the original context
+        commands.push((
+            entity,
+            RigidBodyHandleComponent(body_handle),
+            ColliderHandleComponent(collider_handle),
+            CollideWith(Vec::new()),
+        ));
     }
 
     // Add the handles as components to the entities.
     for (entity, body_handle, collider_handle, collide_with) in commands {
-        world.insert(entity, (body_handle, collider_handle, collide_with)).unwrap();
+        world
+            .insert(entity, (body_handle, collider_handle, collide_with))
+            .unwrap();
         debug!("Insert Physics components to new entity {:?}", entity)
     }
 }
 
 /// A system to update the `Transform` of entities based on the physics simulation.
 pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
-    for (_entity, (transform, body_handle)) in world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>() {
+    for (_entity, (transform, body_handle)) in
+        world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>()
+    {
         if let Some(body) = physics.rigid_body_set.get(body_handle.0) {
-            transform.0 = vec2(body.translation().x, body.translation().y);
+            let current_pos = body.translation();
+            let previous_pos = physics.previous_positions.get(&body_handle.0).unwrap_or(current_pos);
+            
+            let alpha = physics.accumulator / PHYSIC_TICKRATE;
+
+            let x = previous_pos.x * (1.0 - alpha) + current_pos.x * alpha;
+            let y = previous_pos.y * (1.0 - alpha) + current_pos.y * alpha;
+
+            transform.position = vec2(x, y);
+            transform.rotation = body.rotation().angle();
         }
     }
 }
 
+/// System to clean up physics resources for entities marked for despawn.
+/// This acts as a "hook" for deletion events.
+pub fn physics_cleanup_system(world: &mut World, physics: &mut PhysicsResources) {
+    let mut entities_to_remove = Vec::new();
+
+    // 1. Collect all entities marked with Despawn
+    for (entity, _) in world.query::<&Despawn>().iter() {
+        entities_to_remove.push(entity);
+    }
+
+    // 2. Clean up resources and despawn
+    for entity in entities_to_remove {
+        // Remove RigidBody from Rapier if it exists
+        if let Ok(handle) = world.get::<&RigidBodyHandleComponent>(entity) {
+            physics.rigid_body_set.remove(
+                handle.0,
+                &mut physics.island_manager,
+                &mut physics.collider_set,
+                &mut physics.impulse_joint_set,
+                &mut physics.multibody_joint_set,
+                true,
+            );
+            physics.previous_positions.remove(&handle.0);
+            debug!("Physics body removed for entity {:?}", entity);
+        }
+
+        // Finally, remove the entity from the ECS
+        let _ = world.despawn(entity);
+    }
+}
+
 /// Helper function to extract entities from a collision event.
-pub fn get_entities_from_collision(event: CollisionEvent, colliders: &ColliderSet) -> Option<(Entity, Entity, CollisionEvent)> {
+pub fn get_entities_from_collision(
+    event: CollisionEvent,
+    colliders: &ColliderSet,
+) -> Option<(Entity, Entity, CollisionEvent)> {
     let (handle1, handle2) = match event {
         CollisionEvent::Started(h1, h2, _) => (h1, h2),
         CollisionEvent::Stopped(h1, h2, _) => (h1, h2),
@@ -128,9 +216,13 @@ pub fn get_entities_from_collision(event: CollisionEvent, colliders: &ColliderSe
 
     Some((entity1, entity2, event))
 }
+/// Register collision events
+/// Save it in ECS
 pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
     while let Ok(collision_event) = physics.collision_event_receiver.try_recv() {
-        if let Some((entity1, entity2, event)) = get_entities_from_collision(collision_event, &physics.collider_set) {
+        if let Some((entity1, entity2, event)) =
+            get_entities_from_collision(collision_event, &physics.collider_set)
+        {
             match event {
                 CollisionEvent::Started(_, _, _) => {
                     debug!("Collision started between {:?} and {:?}", entity1, entity2);
@@ -140,21 +232,29 @@ pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2) {
                         collide_with.0.push(entity1);
                     }
-                },
+                }
                 CollisionEvent::Stopped(_, _, _) => {
                     debug!("Collision stopped between {:?} and {:?}", entity1, entity2);
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity1) {
-                        if let Some(index) = collide_with.0.iter().position(|value| value.id() == entity2.id()) {
+                        if let Some(index) = collide_with
+                            .0
+                            .iter()
+                            .position(|value| value.id() == entity2.id())
+                        {
                             collide_with.0.remove(index);
                         }
                     }
 
                     if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2) {
-                        if let Some(index) = collide_with.0.iter().position(|value| value.id() == entity1.id()) {
+                        if let Some(index) = collide_with
+                            .0
+                            .iter()
+                            .position(|value| value.id() == entity1.id())
+                        {
                             collide_with.0.remove(index);
                         }
                     }
-                },
+                }
             }
         }
     }

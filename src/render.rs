@@ -1,7 +1,11 @@
 use hecs::World;
 use macroquad::prelude::*;
 
-use crate::{asset_server::AssetServer, components::{Sprite, Text, Transform}, debug::debug_draw};
+use crate::{
+    asset_server::AssetServer,
+    components::{Sprite, Text, Transform},
+    debug::debug_draw,
+};
 
 pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
     let zoom_level = 0.0025;
@@ -18,7 +22,7 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
 
     let min_screen = vec2(0.0, 0.0);
     let max_screen = vec2(screen_width(), screen_height());
-    
+
     let min_world = camera.screen_to_world(min_screen);
     let max_world = camera.screen_to_world(max_screen);
 
@@ -31,12 +35,12 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
         (max_world.y - min_world.y).abs(),
     );
 
-    for(_id, (transform, sprite)) in &mut world.query::<(&Transform, &Sprite)>(){
+    for (_id, (transform, sprite)) in &mut world.query::<(&Transform, &Sprite)>() {
         let texture = asset_server.get_texture(sprite.asset_id);
-        let w = texture.width() * sprite.scale;
-        let h = texture.height() * sprite.scale;
+        let w = texture.width() * sprite.scale * transform.scale.x;
+        let h = texture.height() * sprite.scale * transform.scale.y;
 
-        let sprite_rect = Rect::new(transform.0.x, transform.0.y, w, h);
+        let sprite_rect = Rect::new(transform.position.x, transform.position.y, w, h);
 
         if !view_rect.overlaps(&sprite_rect) {
             continue;
@@ -44,23 +48,31 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
 
         draw_texture_ex(
             &texture,
-            transform.0.x,
-            transform.0.y,
+            transform.position.x,
+            transform.position.y,
             WHITE,
-            DrawTextureParams { 
-                dest_size: Some(vec2(texture.width() * sprite.scale, texture.height() * sprite.scale)),
+            DrawTextureParams {
+                dest_size: Some(vec2(
+                    w,
+                    h,
+                )),
+                rotation: transform.rotation,
                 ..Default::default()
-                }
-            )
+            },
+        )
     }
 
-    for(_id, (pos, text)) in &mut world.query::<(&Transform, &Text)>(){
-        draw_text_ex(text.text.as_str(), pos.0.x, pos.0.y, TextParams { 
-            color: text.color,
-            ..Default::default()
-         });
+    for (_id, (pos, text)) in &mut world.query::<(&Transform, &Text)>() {
+        draw_text_ex(
+            text.text.as_str(),
+            pos.position.x,
+            pos.position.y,
+            TextParams {
+                color: text.color,
+                ..Default::default()
+            },
+        );
     }
-
 
     if cfg!(debug_assertions) {
         draw_rectangle_lines(view_rect.x, view_rect.y, view_rect.w, view_rect.h, 0.1, RED);
