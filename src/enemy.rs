@@ -31,6 +31,9 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
 
+        // Apparaît à une position fixe pour l'exemple.
+        let spawn_position = vec2(200.0, 200.0);
+
         let enemy_body = RigidBodyBuilder::dynamic()
             .translation([spawn_position.x, spawn_position.y].into())
             .lock_rotations()

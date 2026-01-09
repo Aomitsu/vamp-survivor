@@ -153,6 +153,9 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources, game_tick:
             transform.position = vec2(x, y);
             transform.rotation = body.rotation().angle();
         }
+
+        // Finally, remove the entity from the ECS
+        let _ = world.despawn(entity);
     }
 }
 
