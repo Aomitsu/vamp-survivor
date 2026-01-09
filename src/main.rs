@@ -3,6 +3,7 @@ use macroquad::prelude::*;
 
 use crate::{
     asset_server::AssetServer,
+    components::GameTick,
     debug::{DebugData, debug_infos_system},
     enemy::{EnemySpawner, enemy_ai_system, enemy_spawner_system},
     physic::{
@@ -39,6 +40,7 @@ async fn main() {
     let mut physics_ressources = setup_physics();
     let mut asset_server = AssetServer::new();
     let mut enemy_spawner = EnemySpawner::default();
+    let mut game_tick = GameTick::default();
 
     if cfg!(debug_assertions) {
         // Debug only
@@ -56,9 +58,10 @@ async fn main() {
     loop {
         clear_background(GRAY);
         physics_cleanup_system(&mut world, &mut physics_ressources);
+        
         // Update physics
         sync_physics_world(&mut world, &mut physics_ressources);
-        collision_register(&mut world, &mut physics_ressources);
+        collision_register(&mut world, &physics_ressources);
 
         // Do things with entities
         player_input_system(&mut world, &mut physics_ressources);
@@ -68,14 +71,20 @@ async fn main() {
         detect_player_dead(&mut world);
 
         // Physics tick related
-        physics_step_system(&mut physics_ressources);
-        sync_transforms(&mut world, &mut physics_ressources);
+        game_tick.accumulator += get_frame_time();
+        while game_tick.accumulator >= game_tick.tick_rate {
+            physics_step_system(&mut physics_ressources, &game_tick);
+            game_tick.accumulator -= game_tick.tick_rate;
+            game_tick.ticks_elapsed += 1;
+        }
+
+        sync_transforms(&mut world, &physics_ressources, &game_tick);
 
         if cfg!(debug_assertions) {
             // Debug only
             // Dessine les boîtes de collision pour le débogage
             debug_draw_colliders_system(&mut world, &physics_ressources);
-            debug_infos_system(&mut world);
+            debug_infos_system(&mut world, &game_tick);
         }
 
         draw_world(&mut world, &asset_server);

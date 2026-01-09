@@ -1,11 +1,11 @@
 [package]
 name = "vamp-survivor"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 macroquad = "0.4"
-rapier2d = { version = "*", features = [ "simd-stable" ] }
+rapier2d = { version = "0.31.0", features = [ "simd-stable" ] }
 hecs = "0.10.5"
 log = "0.4.28"
 env_logger = "0.11.8"

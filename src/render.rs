@@ -47,7 +47,7 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
         }
 
         draw_texture_ex(
-            &texture,
+            texture,
             transform.position.x,
             transform.position.y,
             WHITE,

@@ -3,12 +3,11 @@ use std::collections::HashMap;
 
 use hecs::{Entity, World};
 use log::debug;
-use macroquad::prelude::{get_frame_time, vec2};
+use macroquad::prelude::vec2;
 use rapier2d::prelude::*;
 
-use crate::components::{Despawn, Transform};
+use crate::components::{Despawn, GameTick, Transform};
 
-const PHYSIC_TICKRATE: f32 = 1.0 / 60.0;
 const GRAVITY: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>> = vector![0.0, 0.0]; // Top-down, no gravity.
 
 /// A component to hold the handle to the Rapier rigid body.
@@ -41,8 +40,6 @@ pub struct PhysicsResources {
     pub contact_force_sender: Sender<ContactForceEvent>,
     pub contact_force_receiver: Receiver<ContactForceEvent>,
 
-    // Tickrate management
-    pub accumulator: f32, // Store time
     pub previous_positions: HashMap<RigidBodyHandle, nalgebra::Vector2<f32>>, // Store previous positions, for interpolation
 }
 
@@ -66,46 +63,38 @@ pub fn setup_physics() -> PhysicsResources {
         collision_event_receiver: collision_receiver,
         contact_force_sender: force_sender,
         contact_force_receiver: force_receiver,
-        accumulator: 0.0,
         previous_positions: HashMap::new(),
     }
 }
 
 /// Run the next Physic Tick
-pub fn physics_step_system(physics: &mut PhysicsResources) {
+pub fn physics_step_system(physics: &mut PhysicsResources, game_tick: &GameTick) {
+    physics.integration_parameters.dt = game_tick.tick_rate;
 
-    physics.accumulator += get_frame_time();
-    
-    physics.integration_parameters.dt = PHYSIC_TICKRATE;
+    let physics_hooks = ();
+    let event_handler = ChannelEventCollector::new(
+        physics.collision_event_sender.clone(),
+        physics.contact_force_sender.clone(),
+    );
 
-    while physics.accumulator >= PHYSIC_TICKRATE {
-        let physics_hooks = ();
-        let event_handler = ChannelEventCollector::new(
-            physics.collision_event_sender.clone(),
-            physics.contact_force_sender.clone(),
-        );
-
-        for (handle, body) in physics.rigid_body_set.iter() {
-            physics.previous_positions.insert(handle, *body.translation());
-        }
-
-        physics.physics_pipeline.step(
-            &GRAVITY,
-            &physics.integration_parameters,
-            &mut physics.island_manager,
-            &mut physics.broad_phase,
-            &mut physics.narrow_phase,
-            &mut physics.rigid_body_set,
-            &mut physics.collider_set,
-            &mut physics.impulse_joint_set,
-            &mut physics.multibody_joint_set,
-            &mut physics.ccd_solver,
-            &physics_hooks,
-            &event_handler,
-        );
-
-        physics.accumulator -= PHYSIC_TICKRATE;
+    for (handle, body) in physics.rigid_body_set.iter() {
+        physics.previous_positions.insert(handle, *body.translation());
     }
+
+    physics.physics_pipeline.step(
+        &GRAVITY,
+        &physics.integration_parameters,
+        &mut physics.island_manager,
+        &mut physics.broad_phase,
+        &mut physics.narrow_phase,
+        &mut physics.rigid_body_set,
+        &mut physics.collider_set,
+        &mut physics.impulse_joint_set,
+        &mut physics.multibody_joint_set,
+        &mut physics.ccd_solver,
+        &physics_hooks,
+        &event_handler,
+    );
 }
 
 /// A system that finds entities with `RigidBody` and `Collider` components
@@ -148,7 +137,7 @@ pub fn sync_physics_world(world: &mut World, physics: &mut PhysicsResources) {
 }
 
 /// A system to update the `Transform` of entities based on the physics simulation.
-pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
+pub fn sync_transforms(world: &mut World, physics: &PhysicsResources, game_tick: &GameTick) {
     for (_entity, (transform, body_handle)) in
         world.query_mut::<(&mut Transform, &RigidBodyHandleComponent)>()
     {
@@ -156,7 +145,7 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
             let current_pos = body.translation();
             let previous_pos = physics.previous_positions.get(&body_handle.0).unwrap_or(current_pos);
             
-            let alpha = physics.accumulator / PHYSIC_TICKRATE;
+            let alpha = game_tick.accumulator / game_tick.tick_rate;
 
             let x = previous_pos.x * (1.0 - alpha) + current_pos.x * alpha;
             let y = previous_pos.y * (1.0 - alpha) + current_pos.y * alpha;
@@ -164,6 +153,9 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources) {
             transform.position = vec2(x, y);
             transform.rotation = body.rotation().angle();
         }
+
+        // Finally, remove the entity from the ECS
+        let _ = world.despawn(entity);
     }
 }
 
