@@ -61,7 +61,7 @@ async fn main() {
         
         // Update physics
         sync_physics_world(&mut world, &mut physics_ressources);
-        collision_register(&mut world, &mut physics_ressources);
+        collision_register(&mut world, &physics_ressources);
 
         // Do things with entities
         player_input_system(&mut world, &mut physics_ressources);
@@ -78,7 +78,7 @@ async fn main() {
             game_tick.ticks_elapsed += 1;
         }
 
-        sync_transforms(&mut world, &mut physics_ressources, &game_tick);
+        sync_transforms(&mut world, &physics_ressources, &game_tick);
 
         if cfg!(debug_assertions) {
             // Debug only

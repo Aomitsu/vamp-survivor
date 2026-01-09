@@ -27,9 +27,6 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
 
     if spawner.timer >= spawner.spawn_interval {
         spawner.timer = 0.0;
-        
-        // Apparaît à une position fixe pour l'exemple.
-        let spawn_position = vec2(200.0, 200.0);
 
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
@@ -65,7 +62,6 @@ pub fn enemy_ai_system(world: &mut World, physics: &mut PhysicsResources) {
     let mut player_pos = None;
     for (_id, (transform,)) in world.query::<(&Transform,)>().with::<&Player>().iter() {
         player_pos = Some(transform.position);
-        break;
     }
 
     if let Some(player_pos) = player_pos {

@@ -1,6 +1,5 @@
 /// Note : Some components are located in a specific file for readability :
 /// Physics components are in `physic.rs`
-
 use macroquad::prelude::*;
 
 use crate::asset_server::AssetId;
