@@ -38,7 +38,7 @@ pub fn spawn_player(world: &mut World) {
     ));
 }
 
-pub fn player_input_system(mut world: &mut World, physics: &mut PhysicsResources) {
+pub fn player_input_system(world: &mut World, physics: &mut PhysicsResources) {
     let mut shoot_request = None;
     // Query for the player entity's rigid body handle.
     for (entity, (rigibody_handle, _player, speed)) in

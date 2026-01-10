@@ -218,25 +218,23 @@ pub fn collision_register(world: &mut World, physics: &PhysicsResources) {
                 }
                 CollisionEvent::Stopped(_, _, _) => {
                     debug!("Collision stopped between {:?} and {:?}", entity1, entity2);
-                    if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity1) {
-                        if let Some(index) = collide_with
+                    if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity1)
+                        && let Some(index) = collide_with
                             .0
                             .iter()
                             .position(|value| value.id() == entity2.id())
                         {
                             collide_with.0.remove(index);
                         }
-                    }
 
-                    if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2) {
-                        if let Some(index) = collide_with
+                    if let Ok(collide_with) = world.query_one_mut::<&mut CollideWith>(entity2)
+                        && let Some(index) = collide_with
                             .0
                             .iter()
                             .position(|value| value.id() == entity1.id())
                         {
                             collide_with.0.remove(index);
                         }
-                    }
                 }
             }
         }

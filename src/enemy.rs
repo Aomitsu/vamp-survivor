@@ -6,7 +6,7 @@ use vamp_survivor::despawn_phys_entity;
 use crate::{
     asset_server::{self},
     components::{
-        gameplay::{Damage, Health, Speed}, physic::RigidBodyHandleComponent, render::Sprite, tags::{Despawn, Enemy, Player}, transform::Transform
+        gameplay::{Damage, Health, Speed}, physic::RigidBodyHandleComponent, render::Sprite, tags::{Enemy, Player}, transform::Transform
     },
     physic::PhysicsResources,
 };

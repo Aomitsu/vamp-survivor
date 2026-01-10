@@ -3,7 +3,10 @@ use macroquad::prelude::*;
 
 use crate::{
     asset_server::AssetServer,
-    components::{render::{Sprite, Text}, transform::Transform},
+    components::{
+        render::{Sprite, Text},
+        transform::Transform,
+    },
     debug::debug_draw,
 };
 
@@ -52,10 +55,7 @@ pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
             transform.position.y,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(
-                    w,
-                    h,
-                )),
+                dest_size: Some(vec2(w, h)),
                 rotation: transform.rotation,
                 ..Default::default()
             },
