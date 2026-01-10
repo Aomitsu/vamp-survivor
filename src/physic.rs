@@ -6,19 +6,13 @@ use log::debug;
 use macroquad::prelude::vec2;
 use rapier2d::prelude::*;
 
-use crate::components::{Despawn, GameTick, Transform};
+use crate::components::physic::{CollideWith, ColliderHandleComponent, RigidBodyHandleComponent};
+use crate::{
+    components::{tags::Despawn, transform::Transform},
+    resources::GameTick,
+};
 
 const GRAVITY: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>> = vector![0.0, 0.0]; // Top-down, no gravity.
-
-/// A component to hold the handle to the Rapier rigid body.
-pub struct RigidBodyHandleComponent(pub RigidBodyHandle);
-
-/// A component to hold the handle to the Rapier collider.
-#[allow(dead_code)]
-pub struct ColliderHandleComponent(pub ColliderHandle);
-
-/// A component who list every entities who collide with
-pub struct CollideWith(pub Vec<Entity>);
 
 /// A struct to hold all the Rapier physics resources.
 /// This can be stored in your main game state and passed to systems.
@@ -153,9 +147,6 @@ pub fn sync_transforms(world: &mut World, physics: &PhysicsResources, game_tick:
             transform.position = vec2(x, y);
             transform.rotation = body.rotation().angle();
         }
-
-        // Finally, remove the entity from the ECS
-        let _ = world.despawn(entity);
     }
 }
 

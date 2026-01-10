@@ -9,10 +9,6 @@ pub type AssetId = u64;
 
 /// Why using hash as asset id and not string ?
 /// cf. https://gameprogrammingpatterns.com/data-locality.html
-///
-///
-/// 
-/// 
 pub struct AssetServer {
     textures: HashMap<AssetId, Texture2D>,
     missing_texture: Texture2D,
@@ -101,4 +97,5 @@ pub mod assets {
     pub fn enemy() -> AssetId {
         AssetServer::compute_id("assets/enemy.png")
     }
+    
 }

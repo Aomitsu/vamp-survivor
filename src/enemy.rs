@@ -1,11 +1,14 @@
 use hecs::World;
 use macroquad::prelude::*;
 use rapier2d::prelude::*;
+use vamp_survivor::despawn_phys_entity;
 
 use crate::{
     asset_server::{self},
-    components::{Damage, Enemy, Player, Speed, Sprite, Transform},
-    physic::{PhysicsResources, RigidBodyHandleComponent},
+    components::{
+        gameplay::{Damage, Health, Speed}, physic::RigidBodyHandleComponent, render::Sprite, tags::{Despawn, Enemy, Player}, transform::Transform
+    },
+    physic::PhysicsResources,
 };
 
 pub struct EnemySpawner {
@@ -31,9 +34,6 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
         // Apparaît à une position fixe pour l'exemple.
         let spawn_position = vec2(200.0, 200.0);
 
-        // Apparaît à une position fixe pour l'exemple.
-        let spawn_position = vec2(200.0, 200.0);
-
         let enemy_body = RigidBodyBuilder::dynamic()
             .translation([spawn_position.x, spawn_position.y].into())
             .lock_rotations()
@@ -51,6 +51,10 @@ pub fn enemy_spawner_system(world: &mut World, spawner: &mut EnemySpawner) {
             },
             Speed(80.0),
             Damage(10.0),
+            Health{
+                actual: 100.0,
+                max: 100.0
+            },
             Sprite {
                 asset_id: asset_server::assets::enemy(),
                 scale: 1.0,
@@ -78,5 +82,17 @@ pub fn enemy_ai_system(world: &mut World, physics: &mut PhysicsResources) {
                 body.set_linvel([desired_velocity.x, desired_velocity.y].into(), true);
             }
         }
+    }
+}
+
+pub fn detect_enemy_dead(world: &mut World) {
+    let mut to_despawn = Vec::new();
+    for (id, health) in world.query::<&Health>().with::<&Enemy>().iter() {
+        if health.actual <= 0.0 {
+            to_despawn.push(id);
+        }
+    }
+    for id in to_despawn {
+        despawn_phys_entity!(world, id);
     }
 }

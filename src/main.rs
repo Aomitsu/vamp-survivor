@@ -2,16 +2,10 @@ use hecs::World;
 use macroquad::prelude::*;
 
 use crate::{
-    asset_server::AssetServer,
-    components::GameTick,
-    debug::{DebugData, debug_infos_system},
-    enemy::{EnemySpawner, enemy_ai_system, enemy_spawner_system},
-    physic::{
+    asset_server::AssetServer, debug::{DebugData, debug_infos_system}, enemy::{EnemySpawner, detect_enemy_dead, enemy_ai_system, enemy_spawner_system}, physic::{
         collision_register, physics_cleanup_system, physics_step_system, setup_physics,
         sync_physics_world, sync_transforms,
-    },
-    player::{detect_player_dead, player_input_system, spawn_player},
-    render::draw_world,
+    }, player::{detect_player_dead, player_input_system, spawn_player}, projectile::detect_projectiles_collision, render::draw_world, resources::GameTick
 };
 
 use crate::debug::{DebugLines, debug_draw_colliders_system};
@@ -23,6 +17,8 @@ mod enemy;
 mod physic;
 mod player;
 mod render;
+mod resources;
+mod projectile;
 
 fn window_conf() -> Conf {
     Conf {
@@ -57,23 +53,26 @@ async fn main() {
 
     loop {
         clear_background(GRAY);
-        physics_cleanup_system(&mut world, &mut physics_ressources);
-        
-        // Update physics
-        sync_physics_world(&mut world, &mut physics_ressources);
-        collision_register(&mut world, &physics_ressources);
 
-        // Do things with entities
         player_input_system(&mut world, &mut physics_ressources);
-        enemy_spawner_system(&mut world, &mut enemy_spawner);
-        enemy_ai_system(&mut world, &mut physics_ressources);
 
-        detect_player_dead(&mut world);
-
-        // Physics tick related
+        // Game tick related
         game_tick.accumulator += get_frame_time();
         while game_tick.accumulator >= game_tick.tick_rate {
+            // Physic
+            physics_cleanup_system(&mut world, &mut physics_ressources);
+            sync_physics_world(&mut world, &mut physics_ressources);
             physics_step_system(&mut physics_ressources, &game_tick);
+            collision_register(&mut world, &physics_ressources);
+
+            // Game
+            enemy_ai_system(&mut world, &mut physics_ressources);
+            enemy_spawner_system(&mut world, &mut enemy_spawner);
+
+            detect_player_dead(&mut world);
+            detect_projectiles_collision(&mut world);
+            detect_enemy_dead(&mut world);
+
             game_tick.accumulator -= game_tick.tick_rate;
             game_tick.ticks_elapsed += 1;
         }

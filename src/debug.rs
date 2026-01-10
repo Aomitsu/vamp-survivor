@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use hecs::World;
 use macroquad::prelude::*;
 
-use crate::{components::GameTick, physic::PhysicsResources};
+use crate::{resources::GameTick, physic::PhysicsResources};
 
 /// Un composant qui contiendra une liste de lignes à dessiner pour le débogage.
 /// On peut imaginer une seule entité "Debug" dans le monde qui possède ce composant.

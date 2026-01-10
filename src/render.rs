@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 
 use crate::{
     asset_server::AssetServer,
-    components::{Sprite, Text, Transform},
+    components::{render::{Sprite, Text}, transform::Transform},
     debug::debug_draw,
 };
 
