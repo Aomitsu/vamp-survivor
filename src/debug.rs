@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use hecs::World;
 use macroquad::prelude::*;
 
-use crate::{components::GameTick, physic::PhysicsResources};
+use crate::{physic::PhysicsResources, resources::GameTick};
 
 /// Un composant qui contiendra une liste de lignes à dessiner pour le débogage.
 /// On peut imaginer une seule entité "Debug" dans le monde qui possède ce composant.
@@ -107,7 +107,9 @@ pub fn debug_infos_system(world: &mut World, game_tick: &GameTick) {
 
         let time = get_time();
         if time - debug_data.last_tps_time >= 1.0 {
-            debug_data.tps = game_tick.ticks_elapsed.wrapping_sub(debug_data.last_tick_count);
+            debug_data.tps = game_tick
+                .ticks_elapsed
+                .wrapping_sub(debug_data.last_tick_count);
             debug_data.last_tick_count = game_tick.ticks_elapsed;
             debug_data.last_tps_time = time;
         }
@@ -124,7 +126,6 @@ pub fn debug_infos_system(world: &mut World, game_tick: &GameTick) {
             game_tick.ticks_elapsed,
             game_tick.accumulator,
             debug_data.tps
-            
         )
     }
 }
