@@ -2,10 +2,21 @@ use hecs::World;
 use macroquad::prelude::*;
 
 use crate::{
-    asset_server::AssetServer, debug::{DebugData, debug_infos_system}, enemy::{EnemySpawner, detect_enemy_dead, enemy_ai_system, enemy_spawner_system}, physic::{
+    asset_server::AssetServer,
+    components::{
+        render::{CameraZoom, MainCamera},
+        transform::Transform,
+    },
+    debug::{DebugData, debug_infos_system},
+    enemy::{EnemySpawner, detect_enemy_dead, enemy_ai_system, enemy_spawner_system},
+    physic::{
         collision_register, physics_cleanup_system, physics_step_system, setup_physics,
         sync_physics_world, sync_transforms,
-    }, player::{detect_player_dead, player_input_system, spawn_player}, projectile::detect_projectiles_collision, render::draw_world, resources::GameTick
+    },
+    player::{detect_player_dead, player_input_system, spawn_player},
+    projectile::detect_projectiles_collision,
+    render::draw_world,
+    resources::GameTick,
 };
 
 use crate::debug::{DebugLines, debug_draw_colliders_system};
@@ -16,9 +27,9 @@ mod components;
 mod enemy;
 mod physic;
 mod player;
+mod projectile;
 mod render;
 mod resources;
-mod projectile;
 
 fn window_conf() -> Conf {
     Conf {
@@ -44,6 +55,15 @@ async fn main() {
         world.spawn((DebugLines(Vec::new()),));
         world.spawn((DebugData::new(),));
     }
+
+    world.spawn((
+        MainCamera,
+        CameraZoom(0.0025),
+        Transform {
+            position: vec2(0.0, 0.0),
+            ..Default::default()
+        },
+    ));
 
     asset_server
         .load_assets(&["assets/player.png", "assets/enemy.png"])

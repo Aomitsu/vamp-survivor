@@ -13,4 +13,9 @@ pub struct Text {
     pub text: String,
     pub color: Color,
 }
- 
+
+/// Main Camera Tag, only one camera can be main at a time.
+pub struct MainCamera;
+/// Change camera zoom
+/// TODO:
+pub struct CameraZoom(pub f32);

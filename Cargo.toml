@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 macroquad = "0.4"
-rapier2d = { version = "0.31.0", features = [ "simd-stable" ] }
+rapier2d = { version = "0.31.0", features = ["simd-stable"] }
 hecs = "0.10.5"
 log = "0.4.28"
 env_logger = "0.11.8"
@@ -16,7 +16,7 @@ opt-level = 3
 codegen-units = 1
 
 [profile.release]
-opt-level = 3 
+opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"

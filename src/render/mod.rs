@@ -4,14 +4,25 @@ use macroquad::prelude::*;
 use crate::{
     asset_server::AssetServer,
     components::{
-        render::{Sprite, Text},
+        render::{CameraZoom, MainCamera, Sprite, Text},
         transform::Transform,
     },
     debug::debug_draw,
 };
 
 pub fn draw_world(world: &mut World, asset_server: &AssetServer) {
-    let zoom_level = 0.0025;
+    let mut zoom_level = 0.0025;
+    if let Some((id, _)) = world.query::<&MainCamera>().iter().next() {
+        let cam_zoom = world.get::<&CameraZoom>(id);
+        if let Ok(cam_zoom) = cam_zoom {
+            zoom_level = cam_zoom.0;
+        }
+    } else {
+        log::error!("No main camera found. Can't render world.");
+        // TODO: Panic ? Integrate with PanicGator ??
+        return;
+    }
+
     let aspect_ratio = screen_width() / screen_height();
 
     let camera = Camera2D {
